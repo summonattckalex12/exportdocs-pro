@@ -914,12 +914,64 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
 }
 
 export async function buildDocxBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
-  return _buildBlob(cover, pms);
+  const raw = await _buildBlob(cover, pms);
+  // Force the correct DOCX MIME type — strict readers (Word Mobile, WPS,
+  // Google Docs, iOS Files) reject files served as octet-stream or zip.
+  return new Blob([await raw.arrayBuffer()], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+}
+
+// Sanitize filename for cross-OS compatibility (Windows/macOS/Linux/Android/iOS).
+function safeFilename(name: string): string {
+  const base = (name || "document").replace(/\.docx$/i, "");
+  const cleaned =
+    base
+      .replace(/[\\/:*?"<>|\u0000-\u001F]/g, "_")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120) || "document";
+  return `${cleaned}.docx`;
+}
+
+// Cross-device download: Chrome/Edge/Firefox/Safari desktop, Android, iOS Safari.
+function downloadBlob(blob: Blob, filename: string) {
+  const name = safeFilename(filename);
+  const nav = typeof navigator !== "undefined" ? navigator : undefined;
+
+  const anyNav = nav as unknown as { msSaveOrOpenBlob?: (b: Blob, n: string) => void };
+  if (anyNav?.msSaveOrOpenBlob) {
+    anyNav.msSaveOrOpenBlob(blob, name);
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const ua = nav?.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !(nav as unknown as { MSStream?: unknown })?.MSStream;
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener";
+  // iOS Safari ignores `download`; opening in a new tab lets the user "Save to Files".
+  if (isIOS) a.target = "_blank";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    try {
+      document.body.removeChild(a);
+    } catch {
+      /* noop */
+    }
+    URL.revokeObjectURL(url);
+  }, 4000);
 }
 
 export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string): Promise<Blob> {
-  const blob = await _buildBlob(cover, pms);
-  saveAs(blob, filename.endsWith(".docx") ? filename : `${filename}.docx`);
+  const blob = await buildDocxBlob(cover, pms);
+  downloadBlob(blob, filename);
   return blob;
 }
+
 
