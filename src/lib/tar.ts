@@ -56,5 +56,5 @@ export function untar(buf: Uint8Array): TarEntry[] {
 }
 
 export function ungzipToTar(buf: Uint8Array): Uint8Array {
-  return pako.ungzip(buf);
+  return ungzip(buf);
 }
