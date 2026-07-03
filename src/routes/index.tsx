@@ -361,7 +361,7 @@ function Home() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">File HTML Preventive Maintenance</CardTitle>
-              <CardDescription>Upload HTML atau ZIP berisi banyak HTML. Atur urutan dengan tombol panah — urutan file = urutan lampiran.</CardDescription>
+              <CardDescription>Upload HTML, ZIP, atau .tar.gz berisi banyak HTML. Seret item untuk mengatur urutan — urutan file = urutan lampiran.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <label
