@@ -345,7 +345,7 @@ function buildCover(
 
   const madeCell = (
     heading: string,
-    logo: ImgBytes | null,
+    logo: ImgBytesSized | null,
     name: string,
     address: string[],
     align: (typeof AlignmentType)[keyof typeof AlignmentType],
@@ -368,7 +368,7 @@ function buildCover(
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: { width: 90, height: 85 },
+                  transformation: fitBox(logo, 110, 90),
                   altText: { title: "Logo", description: "Party logo", name: "party-logo" },
                 }),
               ]
