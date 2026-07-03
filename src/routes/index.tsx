@@ -302,6 +302,17 @@ function Home() {
               <Label className="text-xs">Executive Summary <span className="text-muted-foreground">(opsional, auto jika kosong)</span></Label>
               <Textarea rows={3} value={cover.executiveSummary} onChange={(e) => set("executiveSummary", e.target.value)} className="mt-1" />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">Alamat Klien <span className="text-muted-foreground">(baris = enter)</span></Label>
+                <Textarea rows={3} value={cover.clientAddress || ""} onChange={(e) => set("clientAddress", e.target.value)} className="mt-1 text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Alamat Vendor <span className="text-muted-foreground">(baris = enter)</span></Label>
+                <Textarea rows={3} value={cover.vendorAddress || ""} onChange={(e) => set("vendorAddress", e.target.value)} className="mt-1 text-xs" />
+              </div>
+            </div>
+
             <div>
               <Label className="text-xs">Summary Conclusion <span className="text-muted-foreground">(satu poin per baris)</span></Label>
               <Textarea rows={4} value={cover.summaryConclusion} onChange={(e) => set("summaryConclusion", e.target.value)} className="mt-1 font-mono text-xs" />
