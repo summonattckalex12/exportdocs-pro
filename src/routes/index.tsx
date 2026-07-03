@@ -418,7 +418,7 @@ function Home() {
                 {busy ? "Membangun dokumen..." : "Export ke Word (.docx)"}
               </Button>
               <p className="mt-3 text-[11px] text-muted-foreground text-center">
-                Setelah dibuka di Word, tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk memperbarui Table of Contents.
+                Table of Contents otomatis terisi; di Microsoft Word bisa tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk refresh nomor halaman.
               </p>
             </CardContent>
           </Card>
