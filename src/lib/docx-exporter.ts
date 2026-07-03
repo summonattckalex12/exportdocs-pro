@@ -681,8 +681,14 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
 
   const children: (Paragraph | Table | TableOfContents)[] = [];
 
-  buildCover(cover).forEach((p) => children.push(p));
+  // Load default cover background (bundled) unless user provided one.
+  const bg = cover.coverBackgroundDataUrl
+    ? decodeDataUrl(cover.coverBackgroundDataUrl)
+    : await fetchBytes(coverBgUrl, "jpg");
+
+  buildCover(cover, bg).forEach((p) => children.push(p));
   buildToc().forEach((c) => children.push(c));
+
 
   children.push(heading("Document Control"));
   children.push(docControlTable(cover));
