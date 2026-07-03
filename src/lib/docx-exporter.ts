@@ -137,20 +137,46 @@ function statusFill(s: StatusKind): string | undefined {
 const border = { style: BorderStyle.SINGLE, size: 4, color: "BFBFBF" };
 const cellBorders = { top: border, bottom: border, left: border, right: border };
 
+// Word documents are XML. PM logs can contain invisible terminal/audit control
+// chars (ASCII 0x00-0x1F, 0x7F-0x9F) that are illegal/unsafe in XML and make
+// Microsoft Word show "Word experienced an error trying to open the file".
+function safeDocxText(value: unknown): string {
+  const input = String(value ?? "");
+  let out = "";
+  for (let i = 0; i < input.length; i += 1) {
+    const code = input.charCodeAt(i);
+
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = input.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += input[i] + input[i + 1];
+        i += 1;
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) continue;
+
+    const allowedXml = code === 0x09 || code === 0x0a || code === 0x0d || (code >= 0x20 && code <= 0xd7ff) || (code >= 0xe000 && code <= 0xfffd);
+    const unsafeWordControl = code >= 0x7f && code <= 0x9f;
+    if (allowedXml && !unsafeWordControl) out += input[i];
+  }
+  return out;
+}
+
 function P(text: string, opts: { bold?: boolean; size?: number; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) {
   return new Paragraph({
     alignment: opts.align,
-    children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 20, color: opts.color })],
+    children: [new TextRun({ text: safeDocxText(text), bold: opts.bold, size: opts.size ?? 20, color: opts.color })],
   });
 }
 
 function multilineParas(text: string, opts: { bold?: boolean; size?: number; color?: string } = {}) {
-  const lines = (text || "").split(/\r?\n/);
+  const lines = safeDocxText(text).split(/\r?\n/);
   return lines.map(
     (line) =>
       new Paragraph({
         children: [
-          new TextRun({ text: line, bold: opts.bold, size: opts.size ?? 18, color: opts.color, font: "Consolas" }),
+          new TextRun({ text: safeDocxText(line), bold: opts.bold, size: opts.size ?? 18, color: opts.color, font: "Consolas" }),
         ],
       }),
   );
@@ -174,7 +200,7 @@ function textCell(text: string, opts: Parameters<typeof cell>[1] & { bold?: bool
         alignment: opts.align,
         children: [
           new TextRun({
-            text,
+            text: safeDocxText(text),
             bold: opts.bold,
             size: opts.size ?? 20,
             color: opts.color,
@@ -585,14 +611,14 @@ function sectionTable(section: PMSection): Table {
         columnSpan: 3,
         shading: { fill: COLOR_HEADER, type: ShadingType.CLEAR, color: "auto" },
         margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: section.title, bold: true, size: 22 })] })],
+        children: [new Paragraph({ children: [new TextRun({ text: safeDocxText(section.title), bold: true, size: 22 })] })],
       }),
     ],
   });
 
   const body = section.rows.map((r) => {
     const fill = statusFill(r.status || "");
-    const val = r.value || "";
+    const val = safeDocxText(r.value || "");
     const lines = val.split(/\r?\n/);
     const maxLine = lines.reduce((m, l) => Math.max(m, l.length), 0);
     const isMultiline = lines.length > 1;
@@ -604,7 +630,7 @@ function sectionTable(section: PMSection): Table {
       : [new Paragraph({ children: [new TextRun({ text: val, size: isWide ? 14 : 18, font: isWide || val.length > 40 ? "Consolas" : undefined })] })];
     return new TableRow({
       children: [
-        textCell(r.label, { width: wLabel, bold: true, fill: "F7F7F7" }),
+        textCell(safeDocxText(r.label), { width: wLabel, bold: true, fill: "F7F7F7" }),
         textCell(":", { width: wSep, align: AlignmentType.CENTER }),
         cell(valueParas, { width: wValue, fill }),
       ],
