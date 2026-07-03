@@ -8,28 +8,36 @@ services:
       NODE_ENV: production
       PORT: "9812"
       HOST: "0.0.0.0"
-      # Kalau nanti pakai MySQL, uncomment baris di bawah:
-      # DATABASE_URL: "mysql://excport:excport@db:3306/excportcuy"
+      # Aktif hanya jika profile "db" dinyalakan (./deploy.sh up --with-db).
+      # Kalau MySQL tidak jalan, fitur history otomatis dinonaktifkan.
+      DATABASE_URL: "${DATABASE_URL:-}"
+      EXPORT_DIR: "/app/data/exports"
     volumes:
+      - ./data/exports:/app/data/exports
       - ./data/uploads:/app/data/uploads
     restart: unless-stopped
-    # depends_on:
-    #   - db
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
 
-  # === Optional: MySQL lokal ===
-  # Aktifkan dengan menghapus tanda komentar di bawah + di service excportcuy.
-  # Data disimpan di ./data/mysql (bind mount lokal, bukan volume Docker).
-  #
-  # db:
-  #   image: mysql:8.4
-  #   container_name: excportcuy-db
-  #   restart: unless-stopped
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: root
-  #     MYSQL_DATABASE: excportcuy
-  #     MYSQL_USER: excport
-  #     MYSQL_PASSWORD: excport
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - ./data/mysql:/var/lib/mysql
+  db:
+    image: mysql:8.4
+    container_name: excportcuy-db
+    profiles: ["db"]
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: excportcuy
+      MYSQL_USER: excport
+      MYSQL_PASSWORD: excport
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
