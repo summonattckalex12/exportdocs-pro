@@ -43,9 +43,11 @@ export interface CoverInput {
   executiveSummary: string;
   summaryConclusion: string;
   recommendation: string;
-  /** Optional cover logo — data URL (image/png|jpg|gif). */
+  /** Optional cover logo (left) — data URL (image/png|jpg|gif). */
   logoDataUrl?: string;
-}
+  /** Optional cover logo (right) — data URL. */
+  logoRightDataUrl?: string;
+
 
 // Decode a data URL into bytes + docx image type.
 function decodeDataUrl(dataUrl: string): { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" } | null {
