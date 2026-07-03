@@ -538,6 +538,15 @@ function hostSection(pm: ParsedPM, index: number): (Paragraph | Table)[] {
 }
 
 // ---------- main entry ----------
+export async function buildDocxBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
+  const _entry = (cover: CoverInput, pms: ParsedPM[], filename: string) => {
+    void filename;
+    return { cover, pms };
+  };
+  void _entry;
+  return _buildBlob(cover, pms);
+}
+
 export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string) {
   const summaries = pms.map(summarizePM);
 
