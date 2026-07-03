@@ -234,7 +234,7 @@ function buildCover(
   }
 
   // ---- Header row: kop client logo (top-left) + kop vendor logo (top-right) ----
-  const headerLogoCell = (logo: ImgBytes | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
+  const headerLogoCell = (logo: ImgBytesSized | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
     new TableCell({
       borders: noBorders(),
       width: { size: Math.floor(CONTENT_WIDTH_DXA / 2), type: WidthType.DXA },
@@ -247,7 +247,7 @@ function buildCover(
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: { width: 70, height: 66 },
+                  transformation: fitBox(logo, 90, 70),
                   altText: { title: "Logo", description: "Header logo", name: "logo" },
                 }),
               ]
