@@ -592,7 +592,16 @@ function sectionTable(section: PMSection): Table {
 
   const body = section.rows.map((r) => {
     const fill = statusFill(r.status || "");
-    const valueParas = r.value.includes("\n") ? multilineParas(r.value) : [new Paragraph({ children: [new TextRun({ text: r.value, size: 18, font: r.value.length > 40 ? "Consolas" : undefined })] })];
+    const val = r.value || "";
+    const lines = val.split(/\r?\n/);
+    const maxLine = lines.reduce((m, l) => Math.max(m, l.length), 0);
+    const isMultiline = lines.length > 1;
+    const isWide = maxLine > 60;
+    // Shrink monospace content that would otherwise overflow the fixed value column.
+    const preSize = maxLine > 110 ? 12 : maxLine > 90 ? 13 : maxLine > 70 ? 14 : 16;
+    const valueParas = isMultiline
+      ? multilineParas(val, { size: preSize })
+      : [new Paragraph({ children: [new TextRun({ text: val, size: isWide ? 14 : 18, font: isWide || val.length > 40 ? "Consolas" : undefined })] })];
     return new TableRow({
       children: [
         textCell(r.label, { width: wLabel, bold: true, fill: "F7F7F7" }),
@@ -605,6 +614,7 @@ function sectionTable(section: PMSection): Table {
   return new Table({
     width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
     columnWidths: [wLabel, wSep, wValue],
+    layout: TableLayoutType.FIXED,
     rows: [header, ...body],
   });
 }
