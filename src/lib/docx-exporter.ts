@@ -66,6 +66,7 @@ export interface CoverInput {
 }
 
 type ImgBytes = { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" };
+type ImgBytesSized = ImgBytes & { w: number; h: number };
 
 // Decode a data URL into bytes + docx image type.
 function decodeDataUrl(dataUrl: string): ImgBytes | null {
@@ -77,6 +78,31 @@ function decodeDataUrl(dataUrl: string): ImgBytes | null {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return { data: bytes, type };
+}
+
+async function measureDataUrl(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    if (typeof Image === "undefined") return resolve({ w: 0, h: 0 });
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+    im.onerror = () => resolve({ w: 0, h: 0 });
+    im.src = dataUrl;
+  });
+}
+
+async function decodeSized(dataUrl?: string): Promise<ImgBytesSized | null> {
+  if (!dataUrl) return null;
+  const raw = decodeDataUrl(dataUrl);
+  if (!raw) return null;
+  const dims = await measureDataUrl(dataUrl);
+  return { ...raw, w: dims.w || 1, h: dims.h || 1 };
+}
+
+// Fit an image into a max box while preserving aspect ratio.
+function fitBox(img: { w: number; h: number } | null, maxW: number, maxH: number) {
+  if (!img || !img.w || !img.h) return { width: maxW, height: maxH };
+  const r = Math.min(maxW / img.w, maxH / img.h);
+  return { width: Math.max(1, Math.round(img.w * r)), height: Math.max(1, Math.round(img.h * r)) };
 }
 
 async function fetchBytes(url: string, type: ImgBytes["type"]): Promise<ImgBytes | null> {
