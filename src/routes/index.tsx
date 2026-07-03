@@ -516,3 +516,63 @@ function DateField({ label, v, onChange }: { label: string; v: string; onChange:
     </div>
   );
 }
+
+function SortableFileItem({
+  file,
+  index,
+  summary,
+  onRemove,
+}: {
+  file: FileItem;
+  index: number;
+  summary: ReturnType<typeof summarizePM>;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: file.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : "auto",
+  };
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-md border border-border/70 bg-card/40 p-3",
+        isDragging && "ring-2 ring-[hsl(var(--brand))]/60 shadow-lg",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <button
+            type="button"
+            className="mt-0.5 flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            {...attributes}
+            {...listeners}
+            aria-label="Seret untuk mengurutkan"
+          >
+            <GripVertical className="h-4 w-4" />
+            <span className="text-[10px] font-mono">#{index + 1}</span>
+          </button>
+          <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <div className="text-sm font-medium truncate">{file.pm.hostname}</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              {file.name} · {file.pm.ipAddress || "no ip"} · {file.pm.osRelease || "-"}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <StatusPill s={summary.mountpoint} /> <StatusPill s={summary.uptime} /> <StatusPill s={summary.timeSync} />{" "}
+              <StatusPill s={summary.cpu} /> <StatusPill s={summary.memory} /> <StatusPill s={summary.logKillMemory} />{" "}
+              <StatusPill s={summary.logError} />
+            </div>
+          </div>
+        </div>
+        <Button size="icon" variant="ghost" onClick={onRemove} className="shrink-0">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </li>
+  );
+}
