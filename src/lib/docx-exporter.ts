@@ -538,16 +538,7 @@ function hostSection(pm: ParsedPM, index: number): (Paragraph | Table)[] {
 }
 
 // ---------- main entry ----------
-export async function buildDocxBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
-  const _entry = (cover: CoverInput, pms: ParsedPM[], filename: string) => {
-    void filename;
-    return { cover, pms };
-  };
-  void _entry;
-  return _buildBlob(cover, pms);
-}
-
-export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string) {
+async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   const summaries = pms.map(summarizePM);
 
   const heading = (text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_1) =>
@@ -572,13 +563,9 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
 
   const children: (Paragraph | Table | TableOfContents)[] = [];
 
-  // Cover
   buildCover(cover).forEach((p) => children.push(p));
-
-  // TOC
   buildToc().forEach((c) => children.push(c));
 
-  // Document Control
   children.push(heading("Document Control"));
   children.push(docControlTable(cover));
   children.push(heading("Revision", HeadingLevel.HEADING_2));
@@ -589,7 +576,6 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
   children.push(reviewerTable(cover));
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
-  // Overview
   children.push(heading("Overview"));
   children.push(heading("Executive Summary", HeadingLevel.HEADING_2));
   children.push(
@@ -620,7 +606,6 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
-  // Lampiran
   children.push(heading("Lampiran Pekerjaan Preventive Maintenance"));
   pms.forEach((pm, i) => {
     hostSection(pm, i).forEach((n) => children.push(n));
@@ -705,6 +690,16 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
     ],
   });
 
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, filename.endsWith(".docx") ? filename : `${filename}.docx`);
+  return Packer.toBlob(doc);
 }
+
+export async function buildDocxBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
+  return _buildBlob(cover, pms);
+}
+
+export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string): Promise<Blob> {
+  const blob = await _buildBlob(cover, pms);
+  saveAs(blob, filename.endsWith(".docx") ? filename : `${filename}.docx`);
+  return blob;
+}
+
