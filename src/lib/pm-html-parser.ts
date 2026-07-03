@@ -24,6 +24,34 @@ export interface ParsedPM {
   raw: { general: Record<string, string> };
 }
 
+// DOCX is XML-based. Some exported PM HTML files contain terminal/audit-log
+// control separators (for example ASCII 0x1D) inside <pre> blocks. Those bytes
+// are not valid XML characters and make Word reject the generated .docx as
+// "corrupt", even when the ZIP package itself is valid. Strip them as early as
+// possible while preserving normal text, tabs and line breaks.
+function stripInvalidXmlChars(value: string): string {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+
+    // Preserve valid surrogate pairs (emoji / non-BMP chars), drop lone halves.
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += value[i] + value[i + 1];
+        i += 1;
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) continue;
+
+    const allowedXml = code === 0x09 || code === 0x0a || code === 0x0d || (code >= 0x20 && code <= 0xd7ff) || (code >= 0xe000 && code <= 0xfffd);
+    const unsafeWordControl = code >= 0x7f && code <= 0x9f;
+    if (allowedXml && !unsafeWordControl) out += value[i];
+  }
+  return out;
+}
+
 function classifyStatus(cell: HTMLElement): StatusKind {
   const cls = cell.className || "";
   if (cls.includes("tg-qd4f")) return "OK";
@@ -41,13 +69,13 @@ function cellText(cell: HTMLElement | null | undefined): string {
   // Preserve line breaks from <pre> tags
   const pres = cell.querySelectorAll("pre");
   if (pres.length) {
-    return Array.from(cell.childNodes)
+    return stripInvalidXmlChars(Array.from(cell.childNodes)
       .map((n) => (n.nodeType === 3 ? (n.textContent ?? "") : (n as HTMLElement).textContent ?? ""))
       .join("")
       .replace(/\r/g, "")
-      .trim();
+      .trim());
   }
-  return (cell.textContent ?? "").replace(/\s+/g, " ").trim();
+  return stripInvalidXmlChars(cell.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 export function parsePMHtml(html: string, fallbackName = "Unknown"): ParsedPM {
