@@ -743,6 +743,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   const doc = new Document({
     creator: "ExcportCuy",
     title: cover.reportTitle,
+    features: { updateFields: true },
     styles: {
       default: { document: { run: { font: "Calibri", size: 22 } } },
       paragraphStyles: [
