@@ -19,7 +19,9 @@ import {
   Footer,
   PageNumber,
 } from "docx";
-import { saveAs } from "file-saver";
+import FileSaver from "file-saver";
+const { saveAs } = FileSaver;
+
 import type { ParsedPM, PMSection, StatusKind, SummaryRow } from "./pm-html-parser";
 import { summarizePM } from "./pm-html-parser";
 
