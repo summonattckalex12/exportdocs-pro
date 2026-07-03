@@ -207,7 +207,7 @@ function buildCover(
   if (bg) {
     out.push(
       new Paragraph({
-        spacing: { before: 0, after: 0, line: 20 },
+        spacing: { before: 0, after: 0 },
         children: [
           new ImageRun({
             type: bg.type,
@@ -274,7 +274,7 @@ function buildCover(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 160 },
-                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true })],
+                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true, font: "Courier New" })],
               }),
               new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
@@ -285,6 +285,7 @@ function buildCover(
                       `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
                       `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
                     size: 18,
+                    font: "Courier New",
                   }),
                 ],
               }),
@@ -683,7 +684,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
 
   // Vendor logo (MII) is bundled & fixed — user can override via logoRightDataUrl.
   const miiBundled = await fetchBytes(miiLogoUrl, "png");
-  const miiSized: ImgBytesSized | null = miiBundled ? { ...miiBundled, w: 512, h: 512 } : null;
+  const miiSized: ImgBytesSized | null = miiBundled ? { ...miiBundled, w: 208, h: 156 } : null;
 
   const [logoLUser, logoRUser] = await Promise.all([
     decodeSized(cover.logoDataUrl),
