@@ -28,6 +28,7 @@ import {
   TabStopType,
   TabStopPosition,
   TableLayoutType,
+  StyleLevel,
 } from "docx";
 
 
@@ -416,7 +417,27 @@ function buildCover(
 
 
 // ---------- Table of Contents ----------
-function buildToc(): (Paragraph | TableOfContents)[] {
+function buildTocEntries(pms: ParsedPM[]) {
+  const overviewPage = 4;
+  const lampiranPage = 5;
+  return [
+    { title: "Document Control", level: 1, page: 3 },
+    { title: "Revision", level: 2, page: 3 },
+    { title: "List Of Activity", level: 2, page: 3 },
+    { title: "Document Reviewer", level: 2, page: 3 },
+    { title: "Overview", level: 1, page: overviewPage },
+    { title: "Executive Summary", level: 2, page: overviewPage },
+    { title: "List Server", level: 2, page: overviewPage },
+    { title: "Ringkasan Hasil Preventive Maintenance", level: 2, page: overviewPage },
+    { title: "Summary Conclusion", level: 2, page: overviewPage },
+    { title: "Recommendation", level: 2, page: overviewPage },
+    { title: "Lampiran Pekerjaan Preventive Maintenance", level: 1, page: lampiranPage },
+    ...pms.map((pm, i) => ({ title: `${i + 1}. ${safeDocxText(pm.hostname || `Server ${i + 1}`)}`, level: 2, page: lampiranPage + i })),
+  ];
+}
+
+function buildToc(pms: ParsedPM[]): (Paragraph | TableOfContents)[] {
+  const cachedEntries = buildTocEntries(pms);
   return [
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -426,6 +447,10 @@ function buildToc(): (Paragraph | TableOfContents)[] {
     new TableOfContents("Contents", {
       hyperlink: true,
       headingStyleRange: "1-3",
+      useAppliedParagraphOutlineLevel: true,
+      stylesWithLevels: [new StyleLevel("Heading 1", 1), new StyleLevel("Heading 2", 2), new StyleLevel("Heading 3", 3)],
+      beginDirty: true,
+      cachedEntries,
     }),
     new Paragraph({ children: [new PageBreak()] }),
   ];
@@ -729,7 +754,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   const logoR = logoRUser ?? miiSized; // MII fixed unless overridden
 
   buildCover(cover, bg, logoL, logoR).forEach((p) => children.push(p));
-  buildToc().forEach((c) => children.push(c));
+  buildToc(pms).forEach((c) => children.push(c));
 
 
   children.push(heading("Document Control"));
@@ -810,6 +835,30 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
           quickFormat: true,
           run: { size: 22, bold: true, color: "1F1F1F" },
           paragraph: { spacing: { before: 200, after: 120 }, outlineLevel: 2 },
+        },
+        {
+          id: "TOC1",
+          name: "TOC 1",
+          basedOn: "Normal",
+          next: "Normal",
+          run: { size: 22 },
+          paragraph: { spacing: { after: 80 } },
+        },
+        {
+          id: "TOC2",
+          name: "TOC 2",
+          basedOn: "Normal",
+          next: "Normal",
+          run: { size: 21 },
+          paragraph: { indent: { left: 360 }, spacing: { after: 60 } },
+        },
+        {
+          id: "TOC3",
+          name: "TOC 3",
+          basedOn: "Normal",
+          next: "Normal",
+          run: { size: 20 },
+          paragraph: { indent: { left: 720 }, spacing: { after: 40 } },
         },
       ],
     },
