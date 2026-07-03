@@ -32,6 +32,7 @@ import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
 
 import coverBgUrl from "@/assets/cover-bg.jpeg?url";
+import miiLogoUrl from "@/assets/mii-logo.png?url";
 
 import type { ParsedPM, PMSection, StatusKind, SummaryRow } from "./pm-html-parser";
 import { summarizePM } from "./pm-html-parser";
