@@ -291,19 +291,13 @@ function Home() {
             <CardDescription>Data ini akan tampil di halaman depan, Document Control, dan Overview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Logo uploads: client (kiri), vendor (kanan), background cover (opsional) */}
-            <div className="grid gap-3 sm:grid-cols-3">
+            {/* Logo uploads: client (kiri bawah cover + header). Vendor (MII) fixed dari asset. */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <LogoBox
-                label="Logo Klien (kiri)"
+                label="Logo Klien (kiri bawah cover & header)"
                 dataUrl={cover.logoDataUrl || ""}
                 onPick={(l) => onLogo(l, "left")}
                 onClear={() => set("logoDataUrl", "")}
-              />
-              <LogoBox
-                label="Logo Vendor (kanan)"
-                dataUrl={cover.logoRightDataUrl || ""}
-                onPick={(l) => onLogo(l, "right")}
-                onClear={() => set("logoRightDataUrl", "")}
               />
               <LogoBox
                 label="Background Cover (opsional)"
@@ -312,6 +306,9 @@ function Home() {
                 onClear={() => set("coverBackgroundDataUrl", "")}
               />
             </div>
+            <p className="text-[11px] text-muted-foreground -mt-2">
+              Logo vendor (MII) sudah fixed dari sistem — otomatis muncul di bawah kanan cover &amp; header konten.
+            </p>
 
 
             <div className="grid gap-4 sm:grid-cols-2">
