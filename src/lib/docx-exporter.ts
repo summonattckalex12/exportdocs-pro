@@ -807,18 +807,80 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
           }),
           default: new Header({
             children: [
-              new Paragraph({
-                tabStops: [
-                  { type: TabStopType.RIGHT, position: TabStopPosition.MAX },
+              new Table({
+                width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+                columnWidths: [1400, CONTENT_WIDTH_DXA - 2800, 1400],
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noBorders(),
+                        width: { size: 1400, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        children: [
+                          new Paragraph({
+                            alignment: AlignmentType.LEFT,
+                            children: logoL
+                              ? [
+                                  new ImageRun({
+                                    type: logoL.type,
+                                    data: logoL.data,
+                                    transformation: fitBox(logoL, 60, 40),
+                                    altText: { title: "Client", description: "Client logo", name: "client-logo" },
+                                  }),
+                                ]
+                              : [new TextRun({ text: cover.companyName || "", bold: true, size: 16, color: "1F3864" })],
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders(),
+                        width: { size: CONTENT_WIDTH_DXA - 2800, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        children: [
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new TextRun({
+                                text: `${cover.reportTitle || "Laporan PM"} — ${cover.periode || ""}`,
+                                size: 18,
+                                color: "1F3864",
+                                bold: true,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders(),
+                        width: { size: 1400, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        children: [
+                          new Paragraph({
+                            alignment: AlignmentType.RIGHT,
+                            children: logoR
+                              ? [
+                                  new ImageRun({
+                                    type: logoR.type,
+                                    data: logoR.data,
+                                    transformation: fitBox(logoR, 60, 40),
+                                    altText: { title: "Vendor", description: "Vendor logo", name: "vendor-logo" },
+                                  }),
+                                ]
+                              : [new TextRun("")],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
                 ],
+              }),
+              new Paragraph({
+                spacing: { before: 40, after: 0 },
                 border: {
                   bottom: { style: BorderStyle.SINGLE, size: 6, color: "1F3864", space: 1 },
                 },
-                children: [
-                  new TextRun({ text: cover.companyName || "", bold: true, size: 18, color: "1F3864" }),
-                  new TextRun({ text: "\t" }),
-                  new TextRun({ text: `${cover.reportTitle || "Laporan PM"} - ${cover.periode || ""}`, size: 18, color: "1F3864" }),
-                ],
+                children: [new TextRun("")],
               }),
             ],
           }),
