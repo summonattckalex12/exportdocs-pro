@@ -377,12 +377,12 @@ function Home() {
                   <Upload className="h-6 w-6 text-[hsl(var(--brand))]" />
                   <FileArchive className="h-6 w-6 text-[hsl(var(--brand))]/70" />
                 </div>
-                <div className="text-sm font-medium">Drop .html / .zip atau klik untuk memilih</div>
-                <div className="text-xs text-muted-foreground">Multiple files &amp; ZIP didukung</div>
+                <div className="text-sm font-medium">Drop .html / .zip / .tar.gz / .tgz atau klik untuk memilih</div>
+                <div className="text-xs text-muted-foreground">Multiple files &amp; arsip didukung</div>
                 <input
                   id="upload"
                   type="file"
-                  accept=".html,.htm,.zip"
+                  accept=".html,.htm,.zip,.tar,.tar.gz,.tgz,.gz"
                   multiple
                   className="hidden"
                   onChange={(e) => onFiles(e.target.files)}
@@ -390,44 +390,25 @@ function Home() {
               </label>
 
               {files.length > 0 && (
-                <ul className="space-y-2">
-                  {files.map((f, i) => {
-                    const s = summaries[i];
-                    return (
-                      <li key={f.id} className="rounded-md border border-border/70 bg-card/40 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <div className="flex flex-col items-center pt-0.5">
-                              <span className="text-[10px] font-mono text-muted-foreground">#{i + 1}</span>
-                              <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">{f.pm.hostname}</div>
-                              <div className="text-[11px] text-muted-foreground truncate">{f.name} · {f.pm.ipAddress || "no ip"} · {f.pm.osRelease || "-"}</div>
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                <StatusPill s={s.mountpoint} /> <StatusPill s={s.uptime} /> <StatusPill s={s.timeSync} /> <StatusPill s={s.cpu} /> <StatusPill s={s.memory} /> <StatusPill s={s.logKillMemory} /> <StatusPill s={s.logError} />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <Button size="icon" variant="ghost" disabled={i === 0} onClick={() => moveFile(i, -1)} title="Naik">
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" disabled={i === files.length - 1} onClick={() => moveFile(i, 1)} title="Turun">
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                    <ul className="space-y-2">
+                      {files.map((f, i) => (
+                        <SortableFileItem
+                          key={f.id}
+                          index={i}
+                          file={f}
+                          summary={summaries[i]}
+                          onRemove={() => setFiles((p) => p.filter((x) => x.id !== f.id))}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
               )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="pt-6">
