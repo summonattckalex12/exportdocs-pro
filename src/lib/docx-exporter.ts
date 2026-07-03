@@ -138,25 +138,52 @@ function textCell(text: string, opts: Parameters<typeof cell>[1] & { bold?: bool
 function buildCover(cover: CoverInput): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [];
 
-  // Optional logo at very top
-  const logo = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
-  if (logo) {
+  // ---- Optional dual logos (left / right) as a 2-col table ----
+  const logoL = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
+  const logoR = cover.logoRightDataUrl ? decodeDataUrl(cover.logoRightDataUrl) : null;
+
+  const logoCell = (logo: ReturnType<typeof decodeDataUrl>, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
+    new TableCell({
+      borders: {
+        top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      },
+      width: { size: Math.floor(CONTENT_WIDTH_DXA / 2), type: WidthType.DXA },
+      verticalAlign: VerticalAlign.CENTER,
+      children: [
+        new Paragraph({
+          alignment: align,
+          children: logo
+            ? [
+                new ImageRun({
+                  type: logo.type,
+                  data: logo.data,
+                  transformation: { width: 120, height: 120 },
+                  altText: { title: "Logo", description: "Cover logo", name: "logo" },
+                }),
+              ]
+            : [new TextRun("")],
+        }),
+      ],
+    });
+
+  if (logoL || logoR) {
     out.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 400, after: 200 },
-        children: [
-          new ImageRun({
-            type: logo.type,
-            data: logo.data,
-            transformation: { width: 160, height: 160 },
-            altText: { title: "Logo", description: "Cover logo", name: "logo" },
+      new Table({
+        width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+        columnWidths: [Math.floor(CONTENT_WIDTH_DXA / 2), Math.floor(CONTENT_WIDTH_DXA / 2)],
+        rows: [
+          new TableRow({
+            children: [logoCell(logoL, AlignmentType.LEFT), logoCell(logoR, AlignmentType.RIGHT)],
           }),
         ],
       }),
     );
+    out.push(new Paragraph({ spacing: { before: 200 }, children: [new TextRun("")] }));
   } else {
-    out.push(new Paragraph({ spacing: { before: 600 }, children: [new TextRun("")] }));
+    out.push(new Paragraph({ spacing: { before: 400 }, children: [new TextRun("")] }));
   }
 
   // Brand micro-label
@@ -227,12 +254,14 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
   out.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 500 },
       children: [new TextRun({ text: `Periode ${cover.periode || "-"}`, size: 22 })],
     }),
   );
 
-  // ---- Boxed confidentiality notice ----
+  // ---- Spacer to push confidentiality notice down ----
+  out.push(new Paragraph({ spacing: { before: 2400 }, children: [new TextRun("")] }));
+
+  // ---- Boxed confidentiality notice (bottom of cover) ----
   const boxBorder = { style: BorderStyle.SINGLE, size: 8, color: COLOR_BRAND };
   const confidentialBox = new Table({
     width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
@@ -280,6 +309,7 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
   out.push(new Paragraph({ children: [new PageBreak()] }));
   return out;
 }
+
 
 // ---------- Table of Contents ----------
 function buildToc(): (Paragraph | TableOfContents)[] {
