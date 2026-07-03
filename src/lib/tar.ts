@@ -1,5 +1,5 @@
 // Minimal tar reader (ustar). Handles regular files, LongLink (GNU), skips directories.
-import pako from "pako";
+import { ungzip } from "pako";
 
 export interface TarEntry {
   name: string;
