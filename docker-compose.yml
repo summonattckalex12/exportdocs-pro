@@ -1,0 +1,11 @@
+services:
+  excportcuy:
+    build: .
+    container_name: excportcuy
+    ports:
+      - "9812:9812"
+    environment:
+      NODE_ENV: production
+      PORT: "9812"
+      HOST: "0.0.0.0"
+    restart: unless-stopped
