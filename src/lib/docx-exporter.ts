@@ -194,10 +194,13 @@ function noBorders() {
   return { top: b, bottom: b, left: b, right: b };
 }
 
-function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)[] {
+function buildCover(
+  cover: CoverInput,
+  bg: ImgBytes | null,
+  logoL: ImgBytesSized | null,
+  logoR: ImgBytesSized | null,
+): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [];
-  const logoL = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
-  const logoR = cover.logoRightDataUrl ? decodeDataUrl(cover.logoRightDataUrl) : null;
 
   // ---- Full-page background image, floating behind text ----
   if (bg) {
