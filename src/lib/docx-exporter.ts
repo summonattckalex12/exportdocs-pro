@@ -715,7 +715,8 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
     ? decodeDataUrl(cover.coverBackgroundDataUrl)
     : await fetchBytes(coverBgUrl, "jpg");
 
-  buildCover(cover, bg).forEach((p) => children.push(p));
+  const [logoL, logoR] = await Promise.all([decodeSized(cover.logoDataUrl), decodeSized(cover.logoRightDataUrl)]);
+  buildCover(cover, bg, logoL, logoR).forEach((p) => children.push(p));
   buildToc().forEach((c) => children.push(c));
 
 
