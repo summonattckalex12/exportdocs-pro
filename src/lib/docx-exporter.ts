@@ -28,8 +28,8 @@ import {
   TabStopType,
   TabStopPosition,
 } from "docx";
-import FileSaver from "file-saver";
-const { saveAs } = FileSaver;
+
+
 
 import coverBgUrl from "@/assets/cover-bg.jpeg?url";
 import miiLogoUrl from "@/assets/mii-logo.png?url";
