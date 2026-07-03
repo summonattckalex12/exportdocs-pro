@@ -92,6 +92,19 @@ function Home() {
     if (items.length) toast.success(`${items.length} file HTML dimuat`);
   }
 
+  async function onLogo(fileList: FileList | null) {
+    const f = fileList?.[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) {
+      toast.error("Hanya file gambar yang didukung");
+      return;
+    }
+    const buf = await f.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    set("logoDataUrl", `data:${f.type};base64,${b64}`);
+    toast.success("Logo cover dimuat");
+  }
+
   async function handleExport() {
     if (files.length === 0) {
       toast.error("Upload minimal 1 file HTML dulu ya");
@@ -99,8 +112,36 @@ function Home() {
     }
     try {
       setBusy(true);
-      await buildAndDownloadDocx(cover, files.map((f) => f.pm), filename);
+      const blob = await buildAndDownloadDocx(cover, files.map((f) => f.pm), filename);
       toast.success("Word berhasil dibuat 🔥");
+
+      // Archive ke server (best-effort — kalau server function gagal, biarkan)
+      try {
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        const base64 = btoa(bin);
+        const res = await archiveExport({
+          data: {
+            filename: filename.endsWith(".docx") ? filename : `${filename}.docx`,
+            base64,
+            meta: {
+              serverCount: files.length,
+              companyName: cover.companyName,
+              vendorName: cover.vendorName,
+              periode: cover.periode,
+              hosts: files.map((f) => ({
+                hostname: f.pm.hostname,
+                ipAddress: f.pm.ipAddress,
+                osRelease: f.pm.osRelease,
+              })),
+            },
+          },
+        });
+        if (res?.dbEnabled) toast.message("Riwayat tersimpan di database");
+      } catch (archiveErr) {
+        console.warn("archive skipped:", archiveErr);
+      }
     } catch (e) {
       console.error(e);
       toast.error("Gagal membuat dokumen. Cek console.");
