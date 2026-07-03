@@ -790,20 +790,47 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
       {
         properties: {
           page: {
-            size: { width: 12240, height: 15840, orientation: PageOrientation.PORTRAIT },
+            size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
             margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
+          titlePage: true,
+        },
+        headers: {
+          first: new Header({
+            children: [new Paragraph({ children: [new TextRun("")] })],
+          }),
+          default: new Header({
+            children: [
+              new Paragraph({
+                tabStops: [
+                  { type: TabStopType.RIGHT, position: TabStopPosition.MAX },
+                ],
+                border: {
+                  bottom: { style: BorderStyle.SINGLE, size: 6, color: "1F3864", space: 1 },
+                },
+                children: [
+                  new TextRun({ text: cover.companyName || "", bold: true, size: 18, color: "1F3864" }),
+                  new TextRun({ text: "\t" }),
+                  new TextRun({ text: `${cover.reportTitle || "Laporan PM"} - ${cover.periode || ""}`, size: 18, color: "1F3864" }),
+                ],
+              }),
+            ],
+          }),
         },
         footers: {
+          first: new Footer({
+            children: [new Paragraph({ children: [new TextRun("")] })],
+          }),
           default: new Footer({
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
                 children: [
-                  new TextRun({ text: "Halaman ", size: 18 }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 18 }),
-                  new TextRun({ text: " dari ", size: 18 }),
-                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18 }),
+                  new TextRun({ text: `${cover.vendorName || "Vendor"} - PM ${cover.operatingSystem || ""}`, size: 18, color: "595959" }),
+                  new TextRun({ text: "\t" }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true, color: "1F3864" }),
+                  new TextRun({ text: " / ", size: 18, color: "595959" }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, color: "595959" }),
                 ],
               }),
             ],
@@ -813,6 +840,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
       },
     ],
   });
+
 
   return Packer.toBlob(doc);
 }
