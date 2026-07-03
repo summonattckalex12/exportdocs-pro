@@ -197,6 +197,33 @@ function Home() {
             <CardDescription>Data ini akan tampil di halaman depan, Document Control, dan Overview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Logo cover uploader */}
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-3 flex items-center gap-3">
+              <div className="h-16 w-16 rounded-md border border-border/60 bg-background flex items-center justify-center overflow-hidden shrink-0">
+                {cover.logoDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={cover.logoDataUrl} alt="logo" className="max-h-full max-w-full object-contain" />
+                ) : (
+                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium">Logo Cover (opsional)</div>
+                <div className="text-[11px] text-muted-foreground">PNG/JPG, tampil di atas cover Word.</div>
+                <div className="mt-2 flex gap-2">
+                  <label htmlFor="logo-upload" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs cursor-pointer hover:bg-muted">
+                    <Upload className="h-3 w-3" /> Pilih gambar
+                    <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogo(e.target.files)} />
+                  </label>
+                  {cover.logoDataUrl && (
+                    <button type="button" onClick={() => set("logoDataUrl", "")} className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" /> Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Judul Laporan" v={cover.reportTitle} onChange={(v) => set("reportTitle", v)} />
               <Field label="Subjudul" v={cover.subtitle} onChange={(v) => set("subtitle", v)} />
