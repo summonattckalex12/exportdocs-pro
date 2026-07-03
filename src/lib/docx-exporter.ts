@@ -47,6 +47,9 @@ export interface CoverInput {
   logoDataUrl?: string;
   /** Optional cover logo (right) — data URL. */
   logoRightDataUrl?: string;
+}
+
+
 
 
 // Decode a data URL into bytes + docx image type.
