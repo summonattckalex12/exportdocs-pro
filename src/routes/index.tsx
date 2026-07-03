@@ -135,27 +135,37 @@ function Home() {
   async function onFiles(list: FileList | null) {
     if (!list) return;
     const items: FileItem[] = [];
-    let zipCount = 0;
+    let archCount = 0;
     for (const f of Array.from(list)) {
-      if (/\.zip$/i.test(f.name)) {
-        try {
+      const lname = f.name.toLowerCase();
+      try {
+        if (lname.endsWith(".zip")) {
           const zip = await JSZip.loadAsync(await f.arrayBuffer());
           const entries = Object.values(zip.files).filter((z) => !z.dir && /\.html?$/i.test(z.name));
           for (const entry of entries) {
             const text = await entry.async("string");
             await ingestHtml(entry.name.split("/").pop() || entry.name, text, items);
-            zipCount++;
+            archCount++;
           }
-        } catch (err) {
-          console.error(err);
-          toast.error(`Gagal baca ZIP: ${f.name}`);
+        } else if (lname.endsWith(".tar.gz") || lname.endsWith(".tgz") || lname.endsWith(".tar")) {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          const tarBuf = lname.endsWith(".tar") ? buf : ungzipToTar(buf);
+          const entries = untar(tarBuf).filter((e) => /\.html?$/i.test(e.name));
+          for (const entry of entries) {
+            const text = new TextDecoder().decode(entry.data);
+            await ingestHtml(entry.name.split("/").pop() || entry.name, text, items);
+            archCount++;
+          }
+        } else if (/\.html?$/i.test(f.name)) {
+          await ingestHtml(f.name, await f.text(), items);
         }
-      } else if (/\.html?$/i.test(f.name)) {
-        await ingestHtml(f.name, await f.text(), items);
+      } catch (err) {
+        console.error(err);
+        toast.error(`Gagal baca: ${f.name}`);
       }
     }
     setFiles((prev) => [...prev, ...items]);
-    if (items.length) toast.success(`${items.length} file HTML dimuat${zipCount ? ` (${zipCount} dari ZIP)` : ""}`);
+    if (items.length) toast.success(`${items.length} file HTML dimuat${archCount ? ` (${archCount} dari arsip)` : ""}`);
   }
 
   async function onLogo(fileList: FileList | null, side: "left" | "right" | "bg") {
