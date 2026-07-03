@@ -236,7 +236,7 @@ function buildCover(
 
   // Spacer to push title block below the top decorative image area of the background.
   // Cover intentionally has NO logos at the top — logos live in the bottom block.
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 4; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -244,17 +244,17 @@ function buildCover(
   const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number }) =>
     new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 40, after: opts.spaceAfter ?? 60 },
+      spacing: { before: 20, after: opts.spaceAfter ?? 40 },
       children: [new TextRun({ text, size: opts.size, bold: opts.bold, color: opts.color ?? "FFFFFF" })],
     });
 
-  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 48, bold: true, spaceAfter: 120 }));
-  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 28 }));
-  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 28 }));
-  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 22, spaceAfter: 120 }));
+  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 40, bold: true, spaceAfter: 80 }));
+  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 24 }));
+  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 24 }));
+  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 20, spaceAfter: 80 }));
 
-  // Spacer before confidentiality box
-  for (let i = 0; i < 3; i++) {
+  // Spacer before confidentiality box (push it to middle-lower area)
+  for (let i = 0; i < 6; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -269,12 +269,12 @@ function buildCover(
           new TableCell({
             borders: { top: boxBorder, bottom: boxBorder, left: boxBorder, right: boxBorder },
             shading: { fill: "FFFFFF", type: ShadingType.CLEAR, color: "auto" },
-            margins: { top: 200, bottom: 200, left: 260, right: 260 },
+            margins: { top: 160, bottom: 160, left: 220, right: 220 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 160 },
-                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true, font: "Courier New" })],
+                spacing: { after: 140 },
+                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 20, bold: true, font: "Courier New" })],
               }),
               new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
@@ -284,7 +284,7 @@ function buildCover(
                       `Material dalam dokumen ini dimiliki oleh ${cover.vendorName || "vendor"}. Dokumen ini diajukan kepada "${cover.companyName || "klien"}" untuk tujuan laporan. ` +
                       `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
                       `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
-                    size: 18,
+                    size: 16,
                     font: "Courier New",
                   }),
                 ],
@@ -298,9 +298,7 @@ function buildCover(
   out.push(confidentialBox);
 
   // Spacer before Dibuat untuk / Dibuat oleh
-  for (let i = 0; i < 2; i++) {
-    out.push(new Paragraph({ children: [new TextRun("")] }));
-  }
+  out.push(new Paragraph({ children: [new TextRun("")] }));
 
   // ---- Dibuat untuk / Dibuat oleh two-column footer block ----
   const halfW = Math.floor(CONTENT_WIDTH_DXA / 2);
