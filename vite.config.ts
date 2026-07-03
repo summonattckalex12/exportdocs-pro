@@ -12,4 +12,10 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Build a Node.js server output so the app can run in Docker with proper
+  // static asset serving (CSS/JS/favicon). Cloudflare Workers preset was
+  // breaking styles when running in a plain Node container.
+  nitro: {
+    preset: "node-server",
+  },
 });

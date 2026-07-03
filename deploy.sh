@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
 # ExcportCuy deploy helper
 # Usage:
-#   ./deploy.sh up        # build & start (detached) on port 9812
-#   ./deploy.sh down      # stop & remove containers
-#   ./deploy.sh restart   # restart service
-#   ./deploy.sh rebuild   # force rebuild image then up
-#   ./deploy.sh logs      # tail logs
-#   ./deploy.sh status    # ps
-#   ./deploy.sh clean     # down + remove volumes + prune image
+#   ./deploy.sh up                  # build & start (app only) on port 9812
+#   ./deploy.sh up --with-db        # sekaligus start MySQL lokal (profile db)
+#   ./deploy.sh down                # stop & remove containers
+#   ./deploy.sh down --with-db      # stop app + db
+#   ./deploy.sh restart [--with-db]
+#   ./deploy.sh rebuild [--with-db] # force rebuild image lalu up
+#   ./deploy.sh logs [service]      # tail logs (default: excportcuy)
+#   ./deploy.sh status
+#   ./deploy.sh clean [--with-db]   # down + hapus volume + image
+#   ./deploy.sh db:shell            # masuk ke mysql shell (butuh db aktif)
 #
-# Data lokal: aplikasi ini murni client-side (parse HTML -> Word di browser),
-# tidak butuh database. Kalau nanti perlu MySQL lokal, uncomment service `db`
-# di docker-compose.yml — data akan tersimpan di ./data/mysql (bind mount lokal).
+# Data lokal:
+#   ./data/exports  -> hasil DOCX
+#   ./data/uploads  -> file HTML yang di-upload
+#   ./data/mysql    -> data MySQL (kalau --with-db)
 
 set -euo pipefail
-
 cd "$(dirname "$0")"
 
-# pilih perintah compose yang tersedia
+# --- pilih docker compose command ---
 if docker compose version >/dev/null 2>&1; then
   DC="docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
@@ -27,41 +30,78 @@ else
   exit 1
 fi
 
-# pastikan folder data lokal ada (dipakai kalau MySQL diaktifkan)
-mkdir -p ./data/mysql ./data/uploads
-
+# --- parse args: cari flag --with-db di posisi manapun ---
+WITH_DB=0
+POSITIONAL=()
+for arg in "$@"; do
+  case "$arg" in
+    --with-db|-d) WITH_DB=1 ;;
+    *) POSITIONAL+=("$arg") ;;
+  esac
+done
+set -- "${POSITIONAL[@]:-}"
 CMD="${1:-up}"
+SUB="${2:-}"
+
+# --- siapkan folder data lokal ---
+mkdir -p ./data/exports ./data/uploads
+if [[ "$WITH_DB" -eq 1 ]]; then
+  mkdir -p ./data/mysql
+fi
+
+# --- compose invocation dengan / tanpa profile db ---
+COMPOSE=($DC)
+if [[ "$WITH_DB" -eq 1 ]]; then
+  COMPOSE+=(--profile db)
+  export DATABASE_URL="mysql://excport:excport@db:3306/excportcuy"
+else
+  export DATABASE_URL=""
+fi
+
+banner() { echo -e "🐉  $*"; }
 
 case "$CMD" in
   up)
-    echo "🐉  Building & starting ExcportCuy on http://localhost:9812 ..."
-    $DC up -d --build
-    echo "✅  Running. Cek: $DC ps"
+    if [[ "$WITH_DB" -eq 1 ]]; then
+      banner "Menyalakan ExcportCuy + MySQL di http://localhost:9812 ..."
+    else
+      banner "Menyalakan ExcportCuy (tanpa DB) di http://localhost:9812 ..."
+    fi
+    "${COMPOSE[@]}" up -d --build
+    echo "✅  Running. Cek: ./deploy.sh status"
+    if [[ "$WITH_DB" -eq 1 ]]; then
+      echo "🗄   MySQL: localhost:3306  user=excport pass=excport  db=excportcuy"
+    fi
     ;;
   down)
-    echo "🛑  Stopping ExcportCuy ..."
-    $DC down
+    banner "Menghentikan ExcportCuy ..."
+    "${COMPOSE[@]}" down
     ;;
   restart)
-    $DC restart
+    "${COMPOSE[@]}" restart
     ;;
   rebuild)
-    echo "♻️   Force rebuild ..."
-    $DC build --no-cache
-    $DC up -d
+    banner "Force rebuild ..."
+    "${COMPOSE[@]}" build --no-cache
+    "${COMPOSE[@]}" up -d
     ;;
   logs)
-    $DC logs -f --tail=200
+    svc="${SUB:-excportcuy}"
+    "${COMPOSE[@]}" logs -f --tail=200 "$svc"
     ;;
   status|ps)
-    $DC ps
+    "${COMPOSE[@]}" ps
     ;;
   clean)
-    echo "🧹  Removing containers, volumes, and image ..."
-    $DC down -v --rmi local || true
+    banner "Menghapus container, volume, dan image ..."
+    "${COMPOSE[@]}" down -v --rmi local || true
+    ;;
+  db:shell)
+    banner "Masuk MySQL shell (excportcuy) ..."
+    $DC exec db mysql -uexcport -pexcport excportcuy
     ;;
   *)
-    echo "Usage: $0 {up|down|restart|rebuild|logs|status|clean}"
+    echo "Usage: $0 {up|down|restart|rebuild|logs|status|clean|db:shell} [--with-db]"
     exit 1
     ;;
 esac

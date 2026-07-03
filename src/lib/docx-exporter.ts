@@ -18,6 +18,7 @@ import {
   VerticalAlign,
   Footer,
   PageNumber,
+  ImageRun,
 } from "docx";
 import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
@@ -42,6 +43,20 @@ export interface CoverInput {
   executiveSummary: string;
   summaryConclusion: string;
   recommendation: string;
+  /** Optional cover logo — data URL (image/png|jpg|gif). */
+  logoDataUrl?: string;
+}
+
+// Decode a data URL into bytes + docx image type.
+function decodeDataUrl(dataUrl: string): { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" } | null {
+  const m = /^data:image\/(png|jpe?g|gif|bmp);base64,(.+)$/i.exec(dataUrl.trim());
+  if (!m) return null;
+  const ext = m[1].toLowerCase();
+  const type = (ext === "jpeg" ? "jpg" : ext) as "png" | "jpg" | "gif" | "bmp";
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { data: bytes, type };
 }
 
 // ---------- style helpers ----------
@@ -114,32 +129,151 @@ function textCell(text: string, opts: Parameters<typeof cell>[1] & { bold?: bool
 }
 
 // ---------- cover ----------
-function buildCover(cover: CoverInput): Paragraph[] {
-  return [
-    new Paragraph({ spacing: { before: 1200 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "⟪ ExcportCuy ⟫", size: 28, bold: true, color: COLOR_BRAND })] }),
-    new Paragraph({ spacing: { before: 400 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE", size: 44, bold: true })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 }, children: [new TextRun({ text: cover.subtitle || "Perangkat Lunak", size: 28 })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, size: 24, italics: true })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600 }, children: [new TextRun({ text: cover.companyName || "", size: 32, bold: true })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 }, children: [new TextRun({ text: `Maintenance ${cover.operatingSystem || "OS"}`, size: 24 })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `No Contract : ${cover.contractNo || "-"}`, size: 22 })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Periode ${cover.periode || "-"}`, size: 22 })] }),
-    new Paragraph({ spacing: { before: 900 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true })] }),
+// Sizes are in half-points (docx unit): 28pt=56, 26pt=52, 22pt=44, 20pt=40.
+function buildCover(cover: CoverInput): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = [];
+
+  // Optional logo at very top
+  const logo = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
+  if (logo) {
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 400, after: 200 },
+        children: [
+          new ImageRun({
+            type: logo.type,
+            data: logo.data,
+            transformation: { width: 160, height: 160 },
+            altText: { title: "Logo", description: "Cover logo", name: "logo" },
+          }),
+        ],
+      }),
+    );
+  } else {
+    out.push(new Paragraph({ spacing: { before: 600 }, children: [new TextRun("")] }));
+  }
+
+  // Brand micro-label
+  out.push(
     new Paragraph({
-      spacing: { before: 200 },
-      alignment: AlignmentType.JUSTIFIED,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+      children: [new TextRun({ text: "⟪ ExcportCuy ⟫", size: 22, bold: true, color: COLOR_BRAND })],
+    }),
+  );
+
+  // Report title — 26pt
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 200, after: 120 },
       children: [
         new TextRun({
-          text:
-            `Material dalam dokumen ini dimiliki oleh ${cover.vendorName || "vendor"}. Dokumen ini diajukan kepada "${cover.companyName || "klien"}" untuk tujuan laporan. ` +
-            `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
-            `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
-          size: 20,
+          text: (cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(),
+          size: 52,
+          bold: true,
         }),
       ],
     }),
-    new Paragraph({ children: [new PageBreak()] }),
-  ];
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: cover.subtitle || "Perangkat Lunak", size: 28 })],
+    }),
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+      children: [
+        new TextRun({
+          text: `- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`,
+          size: 24,
+          italics: true,
+        }),
+      ],
+    }),
+  );
+
+  // Company name — bold 28pt
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 400, after: 120 },
+      children: [
+        new TextRun({ text: cover.companyName || "", size: 56, bold: true, color: "0A0A0A" }),
+      ],
+    }),
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `Maintenance ${cover.operatingSystem || "OS"}`, size: 24 })],
+    }),
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `No Contract : ${cover.contractNo || "-"}`, size: 22 })],
+    }),
+  );
+  out.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 500 },
+      children: [new TextRun({ text: `Periode ${cover.periode || "-"}`, size: 22 })],
+    }),
+  );
+
+  // ---- Boxed confidentiality notice ----
+  const boxBorder = { style: BorderStyle.SINGLE, size: 8, color: COLOR_BRAND };
+  const confidentialBox = new Table({
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: [CONTENT_WIDTH_DXA],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: { top: boxBorder, bottom: boxBorder, left: boxBorder, right: boxBorder },
+            shading: { fill: "FFF7F5", type: ShadingType.CLEAR, color: "auto" },
+            margins: { top: 240, bottom: 240, left: 300, right: 300 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 160 },
+                children: [
+                  new TextRun({
+                    text: "PEMBERITAHUAN KERAHASIAAN",
+                    size: 24,
+                    bold: true,
+                    color: COLOR_BRAND,
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.JUSTIFIED,
+                children: [
+                  new TextRun({
+                    text:
+                      `Material dalam dokumen ini dimiliki oleh ${cover.vendorName || "vendor"}. Dokumen ini diajukan kepada "${cover.companyName || "klien"}" untuk tujuan laporan. ` +
+                      `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
+                      `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
+                    size: 20,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+  out.push(confidentialBox);
+
+  out.push(new Paragraph({ children: [new PageBreak()] }));
+  return out;
 }
 
 // ---------- Table of Contents ----------
@@ -404,7 +538,7 @@ function hostSection(pm: ParsedPM, index: number): (Paragraph | Table)[] {
 }
 
 // ---------- main entry ----------
-export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string) {
+async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   const summaries = pms.map(summarizePM);
 
   const heading = (text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_1) =>
@@ -429,13 +563,9 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
 
   const children: (Paragraph | Table | TableOfContents)[] = [];
 
-  // Cover
   buildCover(cover).forEach((p) => children.push(p));
-
-  // TOC
   buildToc().forEach((c) => children.push(c));
 
-  // Document Control
   children.push(heading("Document Control"));
   children.push(docControlTable(cover));
   children.push(heading("Revision", HeadingLevel.HEADING_2));
@@ -446,7 +576,6 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
   children.push(reviewerTable(cover));
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
-  // Overview
   children.push(heading("Overview"));
   children.push(heading("Executive Summary", HeadingLevel.HEADING_2));
   children.push(
@@ -477,7 +606,6 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
-  // Lampiran
   children.push(heading("Lampiran Pekerjaan Preventive Maintenance"));
   pms.forEach((pm, i) => {
     hostSection(pm, i).forEach((n) => children.push(n));
@@ -562,6 +690,16 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
     ],
   });
 
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, filename.endsWith(".docx") ? filename : `${filename}.docx`);
+  return Packer.toBlob(doc);
 }
+
+export async function buildDocxBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
+  return _buildBlob(cover, pms);
+}
+
+export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string): Promise<Blob> {
+  const blob = await _buildBlob(cover, pms);
+  saveAs(blob, filename.endsWith(".docx") ? filename : `${filename}.docx`);
+  return blob;
+}
+
