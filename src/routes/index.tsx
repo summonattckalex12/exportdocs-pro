@@ -62,6 +62,9 @@ const DEFAULT_COVER: CoverInput = {
   executiveSummary: "",
   logoDataUrl: "",
   logoRightDataUrl: "",
+  coverBackgroundDataUrl: "",
+  clientAddress: "Jl. Gatot Subroto Kav 40-42\nJakarta 12190",
+  vendorAddress: "APL Tower 37th Floor\nJl. Letjen S. Parman Kav 28\nJakarta Barat 11470",
   summaryConclusion:
     "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync dalam kondisi baik.\nDitemukan beberapa server dengan status Warning pada log error.",
   recommendation:
@@ -138,7 +141,7 @@ function Home() {
     if (items.length) toast.success(`${items.length} file HTML dimuat${zipCount ? ` (${zipCount} dari ZIP)` : ""}`);
   }
 
-  async function onLogo(fileList: FileList | null, side: "left" | "right") {
+  async function onLogo(fileList: FileList | null, side: "left" | "right" | "bg") {
     const f = fileList?.[0];
     if (!f) return;
     if (!/^image\//.test(f.type)) {
@@ -147,13 +150,16 @@ function Home() {
     }
     try {
       const dataUrl = await readAsDataUrl(f);
-      set(side === "left" ? "logoDataUrl" : "logoRightDataUrl", dataUrl);
-      toast.success(`Logo ${side === "left" ? "kiri" : "kanan"} dimuat`);
+      const key = side === "left" ? "logoDataUrl" : side === "right" ? "logoRightDataUrl" : "coverBackgroundDataUrl";
+      set(key, dataUrl);
+      const labelMap = { left: "Logo kiri", right: "Logo kanan", bg: "Background cover" } as const;
+      toast.success(`${labelMap[side]} dimuat`);
     } catch (e) {
       console.error(e);
       toast.error("Gagal baca gambar");
     }
   }
+
 
   function moveFile(idx: number, dir: -1 | 1) {
     setFiles((prev) => {
@@ -252,21 +258,28 @@ function Home() {
             <CardDescription>Data ini akan tampil di halaman depan, Document Control, dan Overview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Dual logo uploader */}
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Logo uploads: client (kiri), vendor (kanan), background cover (opsional) */}
+            <div className="grid gap-3 sm:grid-cols-3">
               <LogoBox
-                label="Logo Kiri (opsional)"
+                label="Logo Klien (kiri)"
                 dataUrl={cover.logoDataUrl || ""}
                 onPick={(l) => onLogo(l, "left")}
                 onClear={() => set("logoDataUrl", "")}
               />
               <LogoBox
-                label="Logo Kanan (opsional)"
+                label="Logo Vendor (kanan)"
                 dataUrl={cover.logoRightDataUrl || ""}
                 onPick={(l) => onLogo(l, "right")}
                 onClear={() => set("logoRightDataUrl", "")}
               />
+              <LogoBox
+                label="Background Cover (opsional)"
+                dataUrl={cover.coverBackgroundDataUrl || ""}
+                onPick={(l) => onLogo(l, "bg")}
+                onClear={() => set("coverBackgroundDataUrl", "")}
+              />
             </div>
+
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Judul Laporan" v={cover.reportTitle} onChange={(v) => set("reportTitle", v)} />
@@ -289,6 +302,17 @@ function Home() {
               <Label className="text-xs">Executive Summary <span className="text-muted-foreground">(opsional, auto jika kosong)</span></Label>
               <Textarea rows={3} value={cover.executiveSummary} onChange={(e) => set("executiveSummary", e.target.value)} className="mt-1" />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">Alamat Klien <span className="text-muted-foreground">(baris = enter)</span></Label>
+                <Textarea rows={3} value={cover.clientAddress || ""} onChange={(e) => set("clientAddress", e.target.value)} className="mt-1 text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Alamat Vendor <span className="text-muted-foreground">(baris = enter)</span></Label>
+                <Textarea rows={3} value={cover.vendorAddress || ""} onChange={(e) => set("vendorAddress", e.target.value)} className="mt-1 text-xs" />
+              </div>
+            </div>
+
             <div>
               <Label className="text-xs">Summary Conclusion <span className="text-muted-foreground">(satu poin per baris)</span></Label>
               <Textarea rows={4} value={cover.summaryConclusion} onChange={(e) => set("summaryConclusion", e.target.value)} className="mt-1 font-mono text-xs" />
