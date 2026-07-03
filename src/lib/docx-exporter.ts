@@ -16,12 +16,22 @@ import {
   LevelFormat,
   PageOrientation,
   VerticalAlign,
+  Header,
   Footer,
   PageNumber,
   ImageRun,
+  HorizontalPositionAlign,
+  VerticalPositionAlign,
+  HorizontalPositionRelativeFrom,
+  VerticalPositionRelativeFrom,
+  TextWrappingType,
+  TabStopType,
+  TabStopPosition,
 } from "docx";
 import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
+
+import coverBgUrl from "@/assets/cover-bg.jpeg?url";
 
 import type { ParsedPM, PMSection, StatusKind, SummaryRow } from "./pm-html-parser";
 import { summarizePM } from "./pm-html-parser";
@@ -43,25 +53,40 @@ export interface CoverInput {
   executiveSummary: string;
   summaryConclusion: string;
   recommendation: string;
-  /** Optional cover logo (left) — data URL (image/png|jpg|gif). */
+  /** Optional cover logo (left / client) — data URL. */
   logoDataUrl?: string;
-  /** Optional cover logo (right) — data URL. */
+  /** Optional cover logo (right / vendor) — data URL. */
   logoRightDataUrl?: string;
+  /** Optional multi-line client address for "Dibuat untuk". */
+  clientAddress?: string;
+  /** Optional multi-line vendor address for "Dibuat oleh". */
+  vendorAddress?: string;
+  /** Optional custom cover background image (data URL). If omitted, ships default. */
+  coverBackgroundDataUrl?: string;
 }
 
-
-
+type ImgBytes = { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" };
 
 // Decode a data URL into bytes + docx image type.
-function decodeDataUrl(dataUrl: string): { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" } | null {
+function decodeDataUrl(dataUrl: string): ImgBytes | null {
   const m = /^data:image\/(png|jpe?g|gif|bmp);base64,(.+)$/i.exec(dataUrl.trim());
   if (!m) return null;
   const ext = m[1].toLowerCase();
-  const type = (ext === "jpeg" ? "jpg" : ext) as "png" | "jpg" | "gif" | "bmp";
+  const type = (ext === "jpeg" ? "jpg" : ext) as ImgBytes["type"];
   const bin = atob(m[2]);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return { data: bytes, type };
+}
+
+async function fetchBytes(url: string, type: ImgBytes["type"]): Promise<ImgBytes | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return { data: new Uint8Array(await res.arrayBuffer()), type };
+  } catch {
+    return null;
+  }
 }
 
 // ---------- style helpers ----------
