@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { parsePMHtml, summarizePM, type ParsedPM, type StatusKind } from "@/lib/pm-html-parser";
 import { buildAndDownloadDocx, type CoverInput } from "@/lib/docx-exporter";
-import { Upload, FileText, Trash2, Download, Flame } from "lucide-react";
+import { archiveExport } from "@/lib/exports.functions";
+import { Upload, FileText, Trash2, Download, Flame, ImagePlus, X } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,6 +43,7 @@ const DEFAULT_COVER: CoverInput = {
   reviewerVendorRole: "Technical Consultant",
   reviewerDate: today,
   executiveSummary: "",
+  logoDataUrl: "",
   summaryConclusion:
     "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync dalam kondisi baik.\nDitemukan beberapa server dengan status Warning pada log error.",
   recommendation:
