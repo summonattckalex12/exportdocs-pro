@@ -234,61 +234,27 @@ function buildCover(
     );
   }
 
-  // ---- Header row: kop client logo (top-left) + kop vendor logo (top-right) ----
-  const headerLogoCell = (logo: ImgBytesSized | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
-    new TableCell({
-      borders: noBorders(),
-      width: { size: Math.floor(CONTENT_WIDTH_DXA / 2), type: WidthType.DXA },
-      verticalAlign: VerticalAlign.TOP,
-      children: [
-        new Paragraph({
-          alignment: align,
-          children: logo
-            ? [
-                new ImageRun({
-                  type: logo.type,
-                  data: logo.data,
-                  transformation: fitBox(logo, 90, 70),
-                  altText: { title: "Logo", description: "Header logo", name: "logo" },
-                }),
-              ]
-            : [new TextRun("")],
-        }),
-      ],
-    });
-
-  out.push(
-    new Table({
-      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-      columnWidths: [Math.floor(CONTENT_WIDTH_DXA / 2), Math.floor(CONTENT_WIDTH_DXA / 2)],
-      rows: [
-        new TableRow({
-          children: [headerLogoCell(logoL, AlignmentType.LEFT), headerLogoCell(logoR, AlignmentType.RIGHT)],
-        }),
-      ],
-    }),
-  );
-
-  // Spacer to push title block below the top decorative image area
-  for (let i = 0; i < 12; i++) {
+  // Spacer to push title block below the top decorative image area of the background.
+  // Cover intentionally has NO logos at the top — logos live in the bottom block.
+  for (let i = 0; i < 10; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
-  // ---- Title block (right-aligned, white) ----
-  const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string }) =>
+  // ---- Title block (right-aligned, white on the blue panel of the bg) ----
+  const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number }) =>
     new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 40, after: 40 },
+      spacing: { before: 40, after: opts.spaceAfter ?? 60 },
       children: [new TextRun({ text, size: opts.size, bold: opts.bold, color: opts.color ?? "FFFFFF" })],
     });
 
-  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 52, bold: true }));
-  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 32 }));
-  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 32 }));
-  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 28 }));
+  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 48, bold: true, spaceAfter: 120 }));
+  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 28 }));
+  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 28 }));
+  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 22, spaceAfter: 120 }));
 
   // Spacer before confidentiality box
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -308,7 +274,7 @@ function buildCover(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 160 },
-                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true, font: "Consolas" })],
+                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true })],
               }),
               new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
@@ -319,7 +285,6 @@ function buildCover(
                       `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
                       `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
                     size: 18,
-                    font: "Consolas",
                   }),
                 ],
               }),
@@ -332,7 +297,7 @@ function buildCover(
   out.push(confidentialBox);
 
   // Spacer before Dibuat untuk / Dibuat oleh
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -358,18 +323,18 @@ function buildCover(
       children: [
         new Paragraph({
           alignment: align,
-          spacing: { after: 120 },
+          spacing: { after: 100 },
           children: [new TextRun({ text: heading, bold: true, size: 22 })],
         }),
         new Paragraph({
           alignment: align,
-          spacing: { after: 120 },
+          spacing: { after: 100 },
           children: logo
             ? [
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: fitBox(logo, 110, 90),
+                  transformation: fitBox(logo, 110, 80),
                   altText: { title: "Logo", description: "Party logo", name: "party-logo" },
                 }),
               ]
@@ -377,7 +342,7 @@ function buildCover(
         }),
         new Paragraph({
           alignment: align,
-          spacing: { after: 60 },
+          spacing: { after: 40 },
           children: [new TextRun({ text: name, bold: true, size: 22 })],
         }),
         ...address.map(
@@ -385,7 +350,7 @@ function buildCover(
             new Paragraph({
               alignment: align,
               spacing: { after: 20 },
-              children: [new TextRun({ text: line, size: 20 })],
+              children: [new TextRun({ text: line, size: 18 })],
             }),
         ),
       ],
