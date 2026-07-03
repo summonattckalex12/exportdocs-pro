@@ -28,7 +28,6 @@ import {
   TabStopType,
   TabStopPosition,
   TableLayoutType,
-  StyleLevel,
 } from "docx";
 
 
@@ -448,7 +447,6 @@ function buildToc(pms: ParsedPM[]): (Paragraph | TableOfContents)[] {
       hyperlink: true,
       headingStyleRange: "1-3",
       useAppliedParagraphOutlineLevel: true,
-      stylesWithLevels: [new StyleLevel("Heading 1", 1), new StyleLevel("Heading 2", 2), new StyleLevel("Heading 3", 3)],
       beginDirty: true,
       cachedEntries,
     }),
