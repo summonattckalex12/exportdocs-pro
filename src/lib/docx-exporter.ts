@@ -681,7 +681,17 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
     ? decodeDataUrl(cover.coverBackgroundDataUrl)
     : await fetchBytes(coverBgUrl, "jpg");
 
-  const [logoL, logoR] = await Promise.all([decodeSized(cover.logoDataUrl), decodeSized(cover.logoRightDataUrl)]);
+  // Vendor logo (MII) is bundled & fixed — user can override via logoRightDataUrl.
+  const miiBundled = await fetchBytes(miiLogoUrl, "png");
+  const miiSized: ImgBytesSized | null = miiBundled ? { ...miiBundled, w: 512, h: 512 } : null;
+
+  const [logoLUser, logoRUser] = await Promise.all([
+    decodeSized(cover.logoDataUrl),
+    decodeSized(cover.logoRightDataUrl),
+  ]);
+  const logoL = logoLUser; // client (bottom-left only)
+  const logoR = logoRUser ?? miiSized; // MII fixed unless overridden
+
   buildCover(cover, bg, logoL, logoR).forEach((p) => children.push(p));
   buildToc().forEach((c) => children.push(c));
 
