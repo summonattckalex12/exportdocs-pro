@@ -137,15 +137,41 @@ function statusFill(s: StatusKind): string | undefined {
 const border = { style: BorderStyle.SINGLE, size: 4, color: "BFBFBF" };
 const cellBorders = { top: border, bottom: border, left: border, right: border };
 
+// Word documents are XML. PM logs can contain invisible terminal/audit control
+// chars (ASCII 0x00-0x1F, 0x7F-0x9F) that are illegal/unsafe in XML and make
+// Microsoft Word show "Word experienced an error trying to open the file".
+function safeDocxText(value: unknown): string {
+  const input = String(value ?? "");
+  let out = "";
+  for (let i = 0; i < input.length; i += 1) {
+    const code = input.charCodeAt(i);
+
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = input.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += input[i] + input[i + 1];
+        i += 1;
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) continue;
+
+    const allowedXml = code === 0x09 || code === 0x0a || code === 0x0d || (code >= 0x20 && code <= 0xd7ff) || (code >= 0xe000 && code <= 0xfffd);
+    const unsafeWordControl = code >= 0x7f && code <= 0x9f;
+    if (allowedXml && !unsafeWordControl) out += input[i];
+  }
+  return out;
+}
+
 function P(text: string, opts: { bold?: boolean; size?: number; color?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) {
   return new Paragraph({
     alignment: opts.align,
-    children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 20, color: opts.color })],
+    children: [new TextRun({ text: safeDocxText(text), bold: opts.bold, size: opts.size ?? 20, color: opts.color })],
   });
 }
 
 function multilineParas(text: string, opts: { bold?: boolean; size?: number; color?: string } = {}) {
-  const lines = (text || "").split(/\r?\n/);
+  const lines = safeDocxText(text).split(/\r?\n/);
   return lines.map(
     (line) =>
       new Paragraph({
@@ -174,7 +200,7 @@ function textCell(text: string, opts: Parameters<typeof cell>[1] & { bold?: bool
         alignment: opts.align,
         children: [
           new TextRun({
-            text,
+            text: safeDocxText(text),
             bold: opts.bold,
             size: opts.size ?? 20,
             color: opts.color,
