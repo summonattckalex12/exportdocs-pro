@@ -258,21 +258,28 @@ function Home() {
             <CardDescription>Data ini akan tampil di halaman depan, Document Control, dan Overview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Dual logo uploader */}
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Logo uploads: client (kiri), vendor (kanan), background cover (opsional) */}
+            <div className="grid gap-3 sm:grid-cols-3">
               <LogoBox
-                label="Logo Kiri (opsional)"
+                label="Logo Klien (kiri)"
                 dataUrl={cover.logoDataUrl || ""}
                 onPick={(l) => onLogo(l, "left")}
                 onClear={() => set("logoDataUrl", "")}
               />
               <LogoBox
-                label="Logo Kanan (opsional)"
+                label="Logo Vendor (kanan)"
                 dataUrl={cover.logoRightDataUrl || ""}
                 onPick={(l) => onLogo(l, "right")}
                 onClear={() => set("logoRightDataUrl", "")}
               />
+              <LogoBox
+                label="Background Cover (opsional)"
+                dataUrl={cover.coverBackgroundDataUrl || ""}
+                onPick={(l) => onLogo(l, "bg")}
+                onClear={() => set("coverBackgroundDataUrl", "")}
+              />
             </div>
+
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Judul Laporan" v={cover.reportTitle} onChange={(v) => set("reportTitle", v)} />
