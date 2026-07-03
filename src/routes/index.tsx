@@ -62,6 +62,9 @@ const DEFAULT_COVER: CoverInput = {
   executiveSummary: "",
   logoDataUrl: "",
   logoRightDataUrl: "",
+  coverBackgroundDataUrl: "",
+  clientAddress: "Jl. Gatot Subroto Kav 40-42\nJakarta 12190",
+  vendorAddress: "APL Tower 37th Floor\nJl. Letjen S. Parman Kav 28\nJakarta Barat 11470",
   summaryConclusion:
     "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync dalam kondisi baik.\nDitemukan beberapa server dengan status Warning pada log error.",
   recommendation:
