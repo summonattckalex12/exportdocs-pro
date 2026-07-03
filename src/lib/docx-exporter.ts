@@ -176,7 +176,7 @@ function multilineParas(text: string, opts: { bold?: boolean; size?: number; col
     (line) =>
       new Paragraph({
         children: [
-          new TextRun({ text: line, bold: opts.bold, size: opts.size ?? 18, color: opts.color, font: "Consolas" }),
+          new TextRun({ text: safeDocxText(line), bold: opts.bold, size: opts.size ?? 18, color: opts.color, font: "Consolas" }),
         ],
       }),
   );
@@ -611,14 +611,14 @@ function sectionTable(section: PMSection): Table {
         columnSpan: 3,
         shading: { fill: COLOR_HEADER, type: ShadingType.CLEAR, color: "auto" },
         margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: section.title, bold: true, size: 22 })] })],
+        children: [new Paragraph({ children: [new TextRun({ text: safeDocxText(section.title), bold: true, size: 22 })] })],
       }),
     ],
   });
 
   const body = section.rows.map((r) => {
     const fill = statusFill(r.status || "");
-    const val = r.value || "";
+    const val = safeDocxText(r.value || "");
     const lines = val.split(/\r?\n/);
     const maxLine = lines.reduce((m, l) => Math.max(m, l.length), 0);
     const isMultiline = lines.length > 1;
@@ -630,7 +630,7 @@ function sectionTable(section: PMSection): Table {
       : [new Paragraph({ children: [new TextRun({ text: val, size: isWide ? 14 : 18, font: isWide || val.length > 40 ? "Consolas" : undefined })] })];
     return new TableRow({
       children: [
-        textCell(r.label, { width: wLabel, bold: true, fill: "F7F7F7" }),
+        textCell(safeDocxText(r.label), { width: wLabel, bold: true, fill: "F7F7F7" }),
         textCell(":", { width: wSep, align: AlignmentType.CENTER }),
         cell(valueParas, { width: wValue, fill }),
       ],
