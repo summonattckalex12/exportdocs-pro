@@ -1,16 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import JSZip from "jszip";
 import { DragonLogo } from "@/components/DragonLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { parsePMHtml, summarizePM, type ParsedPM, type StatusKind } from "@/lib/pm-html-parser";
 import { buildAndDownloadDocx, type CoverInput } from "@/lib/docx-exporter";
 import { archiveExport } from "@/lib/exports.functions";
-import { Upload, FileText, Trash2, Download, Flame, ImagePlus, X } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Trash2,
+  Download,
+  Flame,
+  ImagePlus,
+  X,
+  CalendarIcon,
+  ArrowUp,
+  ArrowDown,
+  FileArchive,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,6 +61,7 @@ const DEFAULT_COVER: CoverInput = {
   reviewerDate: today,
   executiveSummary: "",
   logoDataUrl: "",
+  logoRightDataUrl: "",
   summaryConclusion:
     "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync dalam kondisi baik.\nDitemukan beberapa server dengan status Warning pada log error.",
   recommendation:
@@ -69,6 +87,16 @@ function StatusPill({ s }: { s: StatusKind }) {
   );
 }
 
+// Read a File as data URL (safe for large files — avoids stack overflow from btoa+spread)
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
 function Home() {
   const [cover, setCover] = useState<CoverInput>(DEFAULT_COVER);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -79,30 +107,62 @@ function Home() {
 
   const set = <K extends keyof CoverInput>(k: K, v: CoverInput[K]) => setCover((c) => ({ ...c, [k]: v }));
 
+  async function ingestHtml(name: string, text: string, items: FileItem[]) {
+    const pm = parsePMHtml(text, name.replace(/\.html?$/i, ""));
+    items.push({ id: `${name}-${Math.random().toString(36).slice(2, 8)}`, name, pm });
+  }
+
   async function onFiles(list: FileList | null) {
     if (!list) return;
     const items: FileItem[] = [];
+    let zipCount = 0;
     for (const f of Array.from(list)) {
-      if (!/\.html?$/i.test(f.name)) continue;
-      const text = await f.text();
-      const pm = parsePMHtml(text, f.name.replace(/\.html?$/i, ""));
-      items.push({ id: `${f.name}-${Math.random().toString(36).slice(2, 8)}`, name: f.name, pm });
+      if (/\.zip$/i.test(f.name)) {
+        try {
+          const zip = await JSZip.loadAsync(await f.arrayBuffer());
+          const entries = Object.values(zip.files).filter((z) => !z.dir && /\.html?$/i.test(z.name));
+          for (const entry of entries) {
+            const text = await entry.async("string");
+            await ingestHtml(entry.name.split("/").pop() || entry.name, text, items);
+            zipCount++;
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error(`Gagal baca ZIP: ${f.name}`);
+        }
+      } else if (/\.html?$/i.test(f.name)) {
+        await ingestHtml(f.name, await f.text(), items);
+      }
     }
     setFiles((prev) => [...prev, ...items]);
-    if (items.length) toast.success(`${items.length} file HTML dimuat`);
+    if (items.length) toast.success(`${items.length} file HTML dimuat${zipCount ? ` (${zipCount} dari ZIP)` : ""}`);
   }
 
-  async function onLogo(fileList: FileList | null) {
+  async function onLogo(fileList: FileList | null, side: "left" | "right") {
     const f = fileList?.[0];
     if (!f) return;
     if (!/^image\//.test(f.type)) {
       toast.error("Hanya file gambar yang didukung");
       return;
     }
-    const buf = await f.arrayBuffer();
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-    set("logoDataUrl", `data:${f.type};base64,${b64}`);
-    toast.success("Logo cover dimuat");
+    try {
+      const dataUrl = await readAsDataUrl(f);
+      set(side === "left" ? "logoDataUrl" : "logoRightDataUrl", dataUrl);
+      toast.success(`Logo ${side === "left" ? "kiri" : "kanan"} dimuat`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal baca gambar");
+    }
+  }
+
+  function moveFile(idx: number, dir: -1 | 1) {
+    setFiles((prev) => {
+      const next = [...prev];
+      const j = idx + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
   }
 
   async function handleExport() {
@@ -114,8 +174,6 @@ function Home() {
       setBusy(true);
       const blob = await buildAndDownloadDocx(cover, files.map((f) => f.pm), filename);
       toast.success("Word berhasil dibuat 🔥");
-
-      // Archive ke server (best-effort — kalau server function gagal, biarkan)
       try {
         const buf = new Uint8Array(await blob.arrayBuffer());
         let bin = "";
@@ -152,7 +210,6 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* nav */}
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -171,7 +228,6 @@ function Home() {
         </div>
       </header>
 
-      {/* hero */}
       <section className="border-b border-border/60">
         <div className="mx-auto max-w-6xl px-6 py-10 grid gap-8 lg:grid-cols-[1.2fr,1fr] items-center">
           <div>
@@ -180,7 +236,7 @@ function Home() {
               Ubah HTML Preventive Maintenance jadi <span className="text-[hsl(var(--brand))]">Word</span> yang rapi.
             </h1>
             <p className="mt-3 text-sm text-muted-foreground max-w-xl">
-              Isi cover analisis dokumen, upload file HTML PM (mendukung banyak file), lalu klik export. Otomatis dibuat cover, Document Control, Table of Contents, Executive Summary, List Server, dan Lampiran per host lengkap dengan pewarnaan status.
+              Isi cover, upload file HTML (atau ZIP berisi banyak HTML), atur urutan, lalu klik export. Otomatis cover, TOC, Document Control, Executive Summary, List Server, dan Lampiran per host.
             </p>
           </div>
           <div className="rounded-xl border border-border/70 bg-card p-6 flex items-center justify-center">
@@ -190,38 +246,26 @@ function Home() {
       </section>
 
       <main className="mx-auto max-w-6xl px-6 py-10 grid gap-8 lg:grid-cols-[1.1fr,1fr]">
-        {/* Cover form */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Cover &amp; Analisis Dokumen</CardTitle>
             <CardDescription>Data ini akan tampil di halaman depan, Document Control, dan Overview.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Logo cover uploader */}
-            <div className="rounded-lg border border-border/70 bg-muted/30 p-3 flex items-center gap-3">
-              <div className="h-16 w-16 rounded-md border border-border/60 bg-background flex items-center justify-center overflow-hidden shrink-0">
-                {cover.logoDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cover.logoDataUrl} alt="logo" className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium">Logo Cover (opsional)</div>
-                <div className="text-[11px] text-muted-foreground">PNG/JPG, tampil di atas cover Word.</div>
-                <div className="mt-2 flex gap-2">
-                  <label htmlFor="logo-upload" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs cursor-pointer hover:bg-muted">
-                    <Upload className="h-3 w-3" /> Pilih gambar
-                    <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogo(e.target.files)} />
-                  </label>
-                  {cover.logoDataUrl && (
-                    <button type="button" onClick={() => set("logoDataUrl", "")} className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
-                      <X className="h-3 w-3" /> Hapus
-                    </button>
-                  )}
-                </div>
-              </div>
+            {/* Dual logo uploader */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LogoBox
+                label="Logo Kiri (opsional)"
+                dataUrl={cover.logoDataUrl || ""}
+                onPick={(l) => onLogo(l, "left")}
+                onClear={() => set("logoDataUrl", "")}
+              />
+              <LogoBox
+                label="Logo Kanan (opsional)"
+                dataUrl={cover.logoRightDataUrl || ""}
+                onPick={(l) => onLogo(l, "right")}
+                onClear={() => set("logoRightDataUrl", "")}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -230,14 +274,14 @@ function Home() {
               <Field label="Nama Perusahaan (Klien)" v={cover.companyName} onChange={(v) => set("companyName", v)} />
               <Field label="Sistem Operasi" v={cover.operatingSystem} onChange={(v) => set("operatingSystem", v)} />
               <Field label="Pelaksana PM" v={cover.pelaksana} onChange={(v) => set("pelaksana", v)} />
-              <Field label="Tanggal &amp; Waktu" v={cover.tanggal} onChange={(v) => set("tanggal", v)} />
+              <DateField label="Tanggal & Waktu" v={cover.tanggal} onChange={(v) => set("tanggal", v)} />
               <Field label="No Contract" v={cover.contractNo} onChange={(v) => set("contractNo", v)} />
               <Field label="Periode" v={cover.periode} onChange={(v) => set("periode", v)} />
               <Field label="Nama Vendor" v={cover.vendorName} onChange={(v) => set("vendorName", v)} />
               <Field label="Reviewer Klien" v={cover.reviewerClient} onChange={(v) => set("reviewerClient", v)} />
               <Field label="Reviewer Vendor" v={cover.reviewerVendor} onChange={(v) => set("reviewerVendor", v)} />
               <Field label="Jabatan Reviewer Vendor" v={cover.reviewerVendorRole} onChange={(v) => set("reviewerVendorRole", v)} />
-              <Field label="Tanggal Reviewer" v={cover.reviewerDate} onChange={(v) => set("reviewerDate", v)} />
+              <DateField label="Tanggal Reviewer" v={cover.reviewerDate} onChange={(v) => set("reviewerDate", v)} />
               <Field label="Nama File Output" v={filename} onChange={setFilename} />
             </div>
 
@@ -256,12 +300,11 @@ function Home() {
           </CardContent>
         </Card>
 
-        {/* Files + export */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">File HTML Preventive Maintenance</CardTitle>
-              <CardDescription>Upload semua file HTML PM per server. Urutan file = urutan lampiran.</CardDescription>
+              <CardDescription>Upload HTML atau ZIP berisi banyak HTML. Atur urutan dengan tombol panah — urutan file = urutan lampiran.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <label
@@ -273,13 +316,16 @@ function Home() {
                   onFiles(e.dataTransfer.files);
                 }}
               >
-                <Upload className="h-6 w-6 text-[hsl(var(--brand))]" />
-                <div className="text-sm font-medium">Drop file .html atau klik untuk memilih</div>
-                <div className="text-xs text-muted-foreground">Mendukung multiple files</div>
+                <div className="flex items-center gap-2">
+                  <Upload className="h-6 w-6 text-[hsl(var(--brand))]" />
+                  <FileArchive className="h-6 w-6 text-[hsl(var(--brand))]/70" />
+                </div>
+                <div className="text-sm font-medium">Drop .html / .zip atau klik untuk memilih</div>
+                <div className="text-xs text-muted-foreground">Multiple files &amp; ZIP didukung</div>
                 <input
                   id="upload"
                   type="file"
-                  accept=".html,.htm"
+                  accept=".html,.htm,.zip"
                   multiple
                   className="hidden"
                   onChange={(e) => onFiles(e.target.files)}
@@ -294,7 +340,10 @@ function Home() {
                       <li key={f.id} className="rounded-md border border-border/70 bg-card/40 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-2 min-w-0">
-                            <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                            <div className="flex flex-col items-center pt-0.5">
+                              <span className="text-[10px] font-mono text-muted-foreground">#{i + 1}</span>
+                              <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+                            </div>
                             <div className="min-w-0">
                               <div className="text-sm font-medium truncate">{f.pm.hostname}</div>
                               <div className="text-[11px] text-muted-foreground truncate">{f.name} · {f.pm.ipAddress || "no ip"} · {f.pm.osRelease || "-"}</div>
@@ -303,9 +352,17 @@ function Home() {
                               </div>
                             </div>
                           </div>
-                          <Button size="icon" variant="ghost" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <Button size="icon" variant="ghost" disabled={i === 0} onClick={() => moveFile(i, -1)} title="Naik">
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" disabled={i === files.length - 1} onClick={() => moveFile(i, 1)} title="Turun">
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </li>
                     );
@@ -340,11 +397,84 @@ function Home() {
   );
 }
 
+function LogoBox({
+  label,
+  dataUrl,
+  onPick,
+  onClear,
+}: {
+  label: string;
+  dataUrl: string;
+  onPick: (files: FileList | null) => void;
+  onClear: () => void;
+}) {
+  const id = `logo-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  return (
+    <div className="rounded-lg border border-border/70 bg-muted/30 p-3 flex items-center gap-3">
+      <div className="h-16 w-16 rounded-md border border-border/60 bg-background flex items-center justify-center overflow-hidden shrink-0">
+        {dataUrl ? (
+          <img src={dataUrl} alt="logo" className="max-h-full max-w-full object-contain" />
+        ) : (
+          <ImagePlus className="h-6 w-6 text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium">{label}</div>
+        <div className="text-[11px] text-muted-foreground">PNG/JPG</div>
+        <div className="mt-2 flex gap-2">
+          <label htmlFor={id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs cursor-pointer hover:bg-muted">
+            <Upload className="h-3 w-3" /> Pilih
+            <input id={id} type="file" accept="image/*" className="hidden" onChange={(e) => onPick(e.target.files)} />
+          </label>
+          {dataUrl && (
+            <button type="button" onClick={onClear} className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
+              <X className="h-3 w-3" /> Hapus
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {
   return (
     <div>
       <Label className="text-xs" dangerouslySetInnerHTML={{ __html: label }} />
       <Input value={v} onChange={(e) => onChange(e.target.value)} className="mt-1" />
+    </div>
+  );
+}
+
+function DateField({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {
+  const parsed = v ? new Date(v) : undefined;
+  const valid = parsed && !isNaN(parsed.getTime()) ? parsed : undefined;
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "mt-1 w-full justify-start text-left font-normal h-9",
+              !valid && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            {valid ? format(valid, "PPP") : <span>Pilih tanggal</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={valid}
+            onSelect={(d) => d && onChange(d.toISOString().slice(0, 10))}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
