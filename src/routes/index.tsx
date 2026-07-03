@@ -141,7 +141,7 @@ function Home() {
     if (items.length) toast.success(`${items.length} file HTML dimuat${zipCount ? ` (${zipCount} dari ZIP)` : ""}`);
   }
 
-  async function onLogo(fileList: FileList | null, side: "left" | "right") {
+  async function onLogo(fileList: FileList | null, side: "left" | "right" | "bg") {
     const f = fileList?.[0];
     if (!f) return;
     if (!/^image\//.test(f.type)) {
@@ -150,13 +150,16 @@ function Home() {
     }
     try {
       const dataUrl = await readAsDataUrl(f);
-      set(side === "left" ? "logoDataUrl" : "logoRightDataUrl", dataUrl);
-      toast.success(`Logo ${side === "left" ? "kiri" : "kanan"} dimuat`);
+      const key = side === "left" ? "logoDataUrl" : side === "right" ? "logoRightDataUrl" : "coverBackgroundDataUrl";
+      set(key, dataUrl);
+      const labelMap = { left: "Logo kiri", right: "Logo kanan", bg: "Background cover" } as const;
+      toast.success(`${labelMap[side]} dimuat`);
     } catch (e) {
       console.error(e);
       toast.error("Gagal baca gambar");
     }
   }
+
 
   function moveFile(idx: number, dir: -1 | 1) {
     setFiles((prev) => {
