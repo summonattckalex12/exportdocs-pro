@@ -3,6 +3,23 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import JSZip from "jszip";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { DragonLogo } from "@/components/DragonLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { parsePMHtml, summarizePM, type ParsedPM, type StatusKind } from "@/lib/pm-html-parser";
 import { buildAndDownloadDocx, type CoverInput } from "@/lib/docx-exporter";
 import { archiveExport } from "@/lib/exports.functions";
+import { untar, ungzipToTar } from "@/lib/tar";
 import {
   Upload,
   FileText,
@@ -24,8 +42,7 @@ import {
   ImagePlus,
   X,
   CalendarIcon,
-  ArrowUp,
-  ArrowDown,
+  GripVertical,
   FileArchive,
 } from "lucide-react";
 
@@ -118,27 +135,37 @@ function Home() {
   async function onFiles(list: FileList | null) {
     if (!list) return;
     const items: FileItem[] = [];
-    let zipCount = 0;
+    let archCount = 0;
     for (const f of Array.from(list)) {
-      if (/\.zip$/i.test(f.name)) {
-        try {
+      const lname = f.name.toLowerCase();
+      try {
+        if (lname.endsWith(".zip")) {
           const zip = await JSZip.loadAsync(await f.arrayBuffer());
           const entries = Object.values(zip.files).filter((z) => !z.dir && /\.html?$/i.test(z.name));
           for (const entry of entries) {
             const text = await entry.async("string");
             await ingestHtml(entry.name.split("/").pop() || entry.name, text, items);
-            zipCount++;
+            archCount++;
           }
-        } catch (err) {
-          console.error(err);
-          toast.error(`Gagal baca ZIP: ${f.name}`);
+        } else if (lname.endsWith(".tar.gz") || lname.endsWith(".tgz") || lname.endsWith(".tar")) {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          const tarBuf = lname.endsWith(".tar") ? buf : ungzipToTar(buf);
+          const entries = untar(tarBuf).filter((e) => /\.html?$/i.test(e.name));
+          for (const entry of entries) {
+            const text = new TextDecoder().decode(entry.data);
+            await ingestHtml(entry.name.split("/").pop() || entry.name, text, items);
+            archCount++;
+          }
+        } else if (/\.html?$/i.test(f.name)) {
+          await ingestHtml(f.name, await f.text(), items);
         }
-      } else if (/\.html?$/i.test(f.name)) {
-        await ingestHtml(f.name, await f.text(), items);
+      } catch (err) {
+        console.error(err);
+        toast.error(`Gagal baca: ${f.name}`);
       }
     }
     setFiles((prev) => [...prev, ...items]);
-    if (items.length) toast.success(`${items.length} file HTML dimuat${zipCount ? ` (${zipCount} dari ZIP)` : ""}`);
+    if (items.length) toast.success(`${items.length} file HTML dimuat${archCount ? ` (${archCount} dari arsip)` : ""}`);
   }
 
   async function onLogo(fileList: FileList | null, side: "left" | "right" | "bg") {
@@ -161,13 +188,19 @@ function Home() {
   }
 
 
-  function moveFile(idx: number, dir: -1 | 1) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
     setFiles((prev) => {
-      const next = [...prev];
-      const j = idx + dir;
-      if (j < 0 || j >= next.length) return prev;
-      [next[idx], next[j]] = [next[j], next[idx]];
-      return next;
+      const oldIdx = prev.findIndex((f) => f.id === active.id);
+      const newIdx = prev.findIndex((f) => f.id === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
+      return arrayMove(prev, oldIdx, newIdx);
     });
   }
 
@@ -328,7 +361,7 @@ function Home() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">File HTML Preventive Maintenance</CardTitle>
-              <CardDescription>Upload HTML atau ZIP berisi banyak HTML. Atur urutan dengan tombol panah — urutan file = urutan lampiran.</CardDescription>
+              <CardDescription>Upload HTML, ZIP, atau .tar.gz berisi banyak HTML. Seret item untuk mengatur urutan — urutan file = urutan lampiran.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <label
@@ -344,12 +377,12 @@ function Home() {
                   <Upload className="h-6 w-6 text-[hsl(var(--brand))]" />
                   <FileArchive className="h-6 w-6 text-[hsl(var(--brand))]/70" />
                 </div>
-                <div className="text-sm font-medium">Drop .html / .zip atau klik untuk memilih</div>
-                <div className="text-xs text-muted-foreground">Multiple files &amp; ZIP didukung</div>
+                <div className="text-sm font-medium">Drop .html / .zip / .tar.gz / .tgz atau klik untuk memilih</div>
+                <div className="text-xs text-muted-foreground">Multiple files &amp; arsip didukung</div>
                 <input
                   id="upload"
                   type="file"
-                  accept=".html,.htm,.zip"
+                  accept=".html,.htm,.zip,.tar,.tar.gz,.tgz,.gz"
                   multiple
                   className="hidden"
                   onChange={(e) => onFiles(e.target.files)}
@@ -357,44 +390,25 @@ function Home() {
               </label>
 
               {files.length > 0 && (
-                <ul className="space-y-2">
-                  {files.map((f, i) => {
-                    const s = summaries[i];
-                    return (
-                      <li key={f.id} className="rounded-md border border-border/70 bg-card/40 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <div className="flex flex-col items-center pt-0.5">
-                              <span className="text-[10px] font-mono text-muted-foreground">#{i + 1}</span>
-                              <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">{f.pm.hostname}</div>
-                              <div className="text-[11px] text-muted-foreground truncate">{f.name} · {f.pm.ipAddress || "no ip"} · {f.pm.osRelease || "-"}</div>
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                <StatusPill s={s.mountpoint} /> <StatusPill s={s.uptime} /> <StatusPill s={s.timeSync} /> <StatusPill s={s.cpu} /> <StatusPill s={s.memory} /> <StatusPill s={s.logKillMemory} /> <StatusPill s={s.logError} />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <Button size="icon" variant="ghost" disabled={i === 0} onClick={() => moveFile(i, -1)} title="Naik">
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" disabled={i === files.length - 1} onClick={() => moveFile(i, 1)} title="Turun">
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                    <ul className="space-y-2">
+                      {files.map((f, i) => (
+                        <SortableFileItem
+                          key={f.id}
+                          index={i}
+                          file={f}
+                          summary={summaries[i]}
+                          onRemove={() => setFiles((p) => p.filter((x) => x.id !== f.id))}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
               )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="pt-6">
@@ -500,5 +514,65 @@ function DateField({ label, v, onChange }: { label: string; v: string; onChange:
         </PopoverContent>
       </Popover>
     </div>
+  );
+}
+
+function SortableFileItem({
+  file,
+  index,
+  summary,
+  onRemove,
+}: {
+  file: FileItem;
+  index: number;
+  summary: ReturnType<typeof summarizePM>;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: file.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : "auto",
+  };
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-md border border-border/70 bg-card/40 p-3",
+        isDragging && "ring-2 ring-[hsl(var(--brand))]/60 shadow-lg",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <button
+            type="button"
+            className="mt-0.5 flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            {...attributes}
+            {...listeners}
+            aria-label="Seret untuk mengurutkan"
+          >
+            <GripVertical className="h-4 w-4" />
+            <span className="text-[10px] font-mono">#{index + 1}</span>
+          </button>
+          <FileText className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <div className="text-sm font-medium truncate">{file.pm.hostname}</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              {file.name} · {file.pm.ipAddress || "no ip"} · {file.pm.osRelease || "-"}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <StatusPill s={summary.mountpoint} /> <StatusPill s={summary.uptime} /> <StatusPill s={summary.timeSync} />{" "}
+              <StatusPill s={summary.cpu} /> <StatusPill s={summary.memory} /> <StatusPill s={summary.logKillMemory} />{" "}
+              <StatusPill s={summary.logError} />
+            </div>
+          </div>
+        </div>
+        <Button size="icon" variant="ghost" onClick={onRemove} className="shrink-0">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </li>
   );
 }

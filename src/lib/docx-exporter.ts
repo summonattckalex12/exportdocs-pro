@@ -66,6 +66,7 @@ export interface CoverInput {
 }
 
 type ImgBytes = { data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp" };
+type ImgBytesSized = ImgBytes & { w: number; h: number };
 
 // Decode a data URL into bytes + docx image type.
 function decodeDataUrl(dataUrl: string): ImgBytes | null {
@@ -77,6 +78,31 @@ function decodeDataUrl(dataUrl: string): ImgBytes | null {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return { data: bytes, type };
+}
+
+async function measureDataUrl(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    if (typeof Image === "undefined") return resolve({ w: 0, h: 0 });
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+    im.onerror = () => resolve({ w: 0, h: 0 });
+    im.src = dataUrl;
+  });
+}
+
+async function decodeSized(dataUrl?: string): Promise<ImgBytesSized | null> {
+  if (!dataUrl) return null;
+  const raw = decodeDataUrl(dataUrl);
+  if (!raw) return null;
+  const dims = await measureDataUrl(dataUrl);
+  return { ...raw, w: dims.w || 1, h: dims.h || 1 };
+}
+
+// Fit an image into a max box while preserving aspect ratio.
+function fitBox(img: { w: number; h: number } | null, maxW: number, maxH: number) {
+  if (!img || !img.w || !img.h) return { width: maxW, height: maxH };
+  const r = Math.min(maxW / img.w, maxH / img.h);
+  return { width: Math.max(1, Math.round(img.w * r)), height: Math.max(1, Math.round(img.h * r)) };
 }
 
 async function fetchBytes(url: string, type: ImgBytes["type"]): Promise<ImgBytes | null> {
@@ -168,10 +194,13 @@ function noBorders() {
   return { top: b, bottom: b, left: b, right: b };
 }
 
-function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)[] {
+function buildCover(
+  cover: CoverInput,
+  bg: ImgBytes | null,
+  logoL: ImgBytesSized | null,
+  logoR: ImgBytesSized | null,
+): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [];
-  const logoL = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
-  const logoR = cover.logoRightDataUrl ? decodeDataUrl(cover.logoRightDataUrl) : null;
 
   // ---- Full-page background image, floating behind text ----
   if (bg) {
@@ -205,7 +234,7 @@ function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)
   }
 
   // ---- Header row: kop client logo (top-left) + kop vendor logo (top-right) ----
-  const headerLogoCell = (logo: ImgBytes | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
+  const headerLogoCell = (logo: ImgBytesSized | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
     new TableCell({
       borders: noBorders(),
       width: { size: Math.floor(CONTENT_WIDTH_DXA / 2), type: WidthType.DXA },
@@ -218,7 +247,7 @@ function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: { width: 70, height: 66 },
+                  transformation: fitBox(logo, 90, 70),
                   altText: { title: "Logo", description: "Header logo", name: "logo" },
                 }),
               ]
@@ -316,7 +345,7 @@ function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)
 
   const madeCell = (
     heading: string,
-    logo: ImgBytes | null,
+    logo: ImgBytesSized | null,
     name: string,
     address: string[],
     align: (typeof AlignmentType)[keyof typeof AlignmentType],
@@ -339,7 +368,7 @@ function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: { width: 90, height: 85 },
+                  transformation: fitBox(logo, 110, 90),
                   altText: { title: "Logo", description: "Party logo", name: "party-logo" },
                 }),
               ]
@@ -686,7 +715,8 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
     ? decodeDataUrl(cover.coverBackgroundDataUrl)
     : await fetchBytes(coverBgUrl, "jpg");
 
-  buildCover(cover, bg).forEach((p) => children.push(p));
+  const [logoL, logoR] = await Promise.all([decodeSized(cover.logoDataUrl), decodeSized(cover.logoRightDataUrl)]);
+  buildCover(cover, bg, logoL, logoR).forEach((p) => children.push(p));
   buildToc().forEach((c) => children.push(c));
 
 
