@@ -159,24 +159,57 @@ function textCell(text: string, opts: Parameters<typeof cell>[1] & { bold?: bool
 }
 
 // ---------- cover ----------
-// Sizes are in half-points (docx unit): 28pt=56, 26pt=52, 22pt=44, 20pt=40.
-function buildCover(cover: CoverInput): (Paragraph | Table)[] {
-  const out: (Paragraph | Table)[] = [];
+// Half-points: 28pt=56, 26pt=52, 22pt=44, 20pt=40, 18pt=36, 14pt=28, 11pt=22.
+const A4_PX_W = 794; // ~8.27in @ 96dpi
+const A4_PX_H = 1123; // ~11.69in @ 96dpi
 
-  // ---- Optional dual logos (left / right) as a 2-col table ----
+function noBorders() {
+  const b = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  return { top: b, bottom: b, left: b, right: b };
+}
+
+function buildCover(cover: CoverInput, bg: ImgBytes | null): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = [];
   const logoL = cover.logoDataUrl ? decodeDataUrl(cover.logoDataUrl) : null;
   const logoR = cover.logoRightDataUrl ? decodeDataUrl(cover.logoRightDataUrl) : null;
 
-  const logoCell = (logo: ReturnType<typeof decodeDataUrl>, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
+  // ---- Full-page background image, floating behind text ----
+  if (bg) {
+    out.push(
+      new Paragraph({
+        spacing: { before: 0, after: 0, line: 20 },
+        children: [
+          new ImageRun({
+            type: bg.type,
+            data: bg.data,
+            transformation: { width: A4_PX_W, height: A4_PX_H },
+            altText: { title: "Cover background", description: "Decorative cover background", name: "cover-bg" },
+            floating: {
+              horizontalPosition: {
+                relative: HorizontalPositionRelativeFrom.PAGE,
+                align: HorizontalPositionAlign.LEFT,
+              },
+              verticalPosition: {
+                relative: VerticalPositionRelativeFrom.PAGE,
+                align: VerticalPositionAlign.TOP,
+              },
+              behindDocument: true,
+              zIndex: 0,
+              allowOverlap: true,
+              wrap: { type: TextWrappingType.NONE },
+            },
+          }),
+        ],
+      }),
+    );
+  }
+
+  // ---- Header row: kop client logo (top-left) + kop vendor logo (top-right) ----
+  const headerLogoCell = (logo: ImgBytes | null, align: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
     new TableCell({
-      borders: {
-        top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-        bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-        left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      },
+      borders: noBorders(),
       width: { size: Math.floor(CONTENT_WIDTH_DXA / 2), type: WidthType.DXA },
-      verticalAlign: VerticalAlign.CENTER,
+      verticalAlign: VerticalAlign.TOP,
       children: [
         new Paragraph({
           alignment: align,
@@ -185,8 +218,8 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
                 new ImageRun({
                   type: logo.type,
                   data: logo.data,
-                  transformation: { width: 120, height: 120 },
-                  altText: { title: "Logo", description: "Cover logo", name: "logo" },
+                  transformation: { width: 70, height: 66 },
+                  altText: { title: "Logo", description: "Header logo", name: "logo" },
                 }),
               ]
             : [new TextRun("")],
@@ -194,100 +227,43 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
       ],
     });
 
-  if (logoL || logoR) {
-    out.push(
-      new Table({
-        width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
-        columnWidths: [Math.floor(CONTENT_WIDTH_DXA / 2), Math.floor(CONTENT_WIDTH_DXA / 2)],
-        rows: [
-          new TableRow({
-            children: [logoCell(logoL, AlignmentType.LEFT), logoCell(logoR, AlignmentType.RIGHT)],
-          }),
-        ],
-      }),
-    );
-    out.push(new Paragraph({ spacing: { before: 200 }, children: [new TextRun("")] }));
-  } else {
-    out.push(new Paragraph({ spacing: { before: 400 }, children: [new TextRun("")] }));
+  out.push(
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [Math.floor(CONTENT_WIDTH_DXA / 2), Math.floor(CONTENT_WIDTH_DXA / 2)],
+      rows: [
+        new TableRow({
+          children: [headerLogoCell(logoL, AlignmentType.LEFT), headerLogoCell(logoR, AlignmentType.RIGHT)],
+        }),
+      ],
+    }),
+  );
+
+  // Spacer to push title block below the top decorative image area
+  for (let i = 0; i < 12; i++) {
+    out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
-  // Brand micro-label
-  out.push(
+  // ---- Title block (right-aligned, white) ----
+  const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string }) =>
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-      children: [new TextRun({ text: "⟪ ExcportCuy ⟫", size: 22, bold: true, color: COLOR_BRAND })],
-    }),
-  );
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 40, after: 40 },
+      children: [new TextRun({ text, size: opts.size, bold: opts.bold, color: opts.color ?? "FFFFFF" })],
+    });
 
-  // Report title — 26pt
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 120 },
-      children: [
-        new TextRun({
-          text: (cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(),
-          size: 52,
-          bold: true,
-        }),
-      ],
-    }),
-  );
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: cover.subtitle || "Perangkat Lunak", size: 28 })],
-    }),
-  );
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-      children: [
-        new TextRun({
-          text: `- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`,
-          size: 24,
-          italics: true,
-        }),
-      ],
-    }),
-  );
+  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 52, bold: true }));
+  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 32 }));
+  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 32 }));
+  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 28 }));
 
-  // Company name — bold 28pt
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 400, after: 120 },
-      children: [
-        new TextRun({ text: cover.companyName || "", size: 56, bold: true, color: "0A0A0A" }),
-      ],
-    }),
-  );
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: `Maintenance ${cover.operatingSystem || "OS"}`, size: 24 })],
-    }),
-  );
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: `No Contract : ${cover.contractNo || "-"}`, size: 22 })],
-    }),
-  );
-  out.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: `Periode ${cover.periode || "-"}`, size: 22 })],
-    }),
-  );
+  // Spacer before confidentiality box
+  for (let i = 0; i < 4; i++) {
+    out.push(new Paragraph({ children: [new TextRun("")] }));
+  }
 
-  // ---- Spacer to push confidentiality notice down ----
-  out.push(new Paragraph({ spacing: { before: 2400 }, children: [new TextRun("")] }));
-
-  // ---- Boxed confidentiality notice (bottom of cover) ----
-  const boxBorder = { style: BorderStyle.SINGLE, size: 8, color: COLOR_BRAND };
+  // ---- Confidentiality box ----
+  const boxBorder = { style: BorderStyle.SINGLE, size: 8, color: "2E7D32" };
   const confidentialBox = new Table({
     width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
     columnWidths: [CONTENT_WIDTH_DXA],
@@ -296,20 +272,13 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
         children: [
           new TableCell({
             borders: { top: boxBorder, bottom: boxBorder, left: boxBorder, right: boxBorder },
-            shading: { fill: "FFF7F5", type: ShadingType.CLEAR, color: "auto" },
-            margins: { top: 240, bottom: 240, left: 300, right: 300 },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR, color: "auto" },
+            margins: { top: 200, bottom: 200, left: 260, right: 260 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 160 },
-                children: [
-                  new TextRun({
-                    text: "PEMBERITAHUAN KERAHASIAAN",
-                    size: 24,
-                    bold: true,
-                    color: COLOR_BRAND,
-                  }),
-                ],
+                children: [new TextRun({ text: "PEMBERITAHUAN KERAHASIAAN", size: 22, bold: true, font: "Consolas" })],
               }),
               new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
@@ -319,7 +288,8 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
                       `Material dalam dokumen ini dimiliki oleh ${cover.vendorName || "vendor"}. Dokumen ini diajukan kepada "${cover.companyName || "klien"}" untuk tujuan laporan. ` +
                       `Dengan penerimaan dokumen ini "${cover.companyName || "klien"}" telah setuju untuk terikat dengan sifat kerahasiaan laporan ini. Reproduksi pada distribusi dari setiap bagian ` +
                       `dari dokumen ini tidak diperkenankan tanpa persetujuan tertulis sebelumnya dari ${cover.vendorName || "vendor"}.`,
-                    size: 20,
+                    size: 18,
+                    font: "Consolas",
                   }),
                 ],
               }),
@@ -331,9 +301,97 @@ function buildCover(cover: CoverInput): (Paragraph | Table)[] {
   });
   out.push(confidentialBox);
 
+  // Spacer before Dibuat untuk / Dibuat oleh
+  for (let i = 0; i < 3; i++) {
+    out.push(new Paragraph({ children: [new TextRun("")] }));
+  }
+
+  // ---- Dibuat untuk / Dibuat oleh two-column footer block ----
+  const halfW = Math.floor(CONTENT_WIDTH_DXA / 2);
+  const addressLines = (raw: string | undefined) =>
+    (raw || "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+  const madeCell = (
+    heading: string,
+    logo: ImgBytes | null,
+    name: string,
+    address: string[],
+    align: (typeof AlignmentType)[keyof typeof AlignmentType],
+  ) =>
+    new TableCell({
+      borders: noBorders(),
+      width: { size: halfW, type: WidthType.DXA },
+      verticalAlign: VerticalAlign.TOP,
+      children: [
+        new Paragraph({
+          alignment: align,
+          spacing: { after: 120 },
+          children: [new TextRun({ text: heading, bold: true, size: 22 })],
+        }),
+        new Paragraph({
+          alignment: align,
+          spacing: { after: 120 },
+          children: logo
+            ? [
+                new ImageRun({
+                  type: logo.type,
+                  data: logo.data,
+                  transformation: { width: 90, height: 85 },
+                  altText: { title: "Logo", description: "Party logo", name: "party-logo" },
+                }),
+              ]
+            : [new TextRun("")],
+        }),
+        new Paragraph({
+          alignment: align,
+          spacing: { after: 60 },
+          children: [new TextRun({ text: name, bold: true, size: 22 })],
+        }),
+        ...address.map(
+          (line) =>
+            new Paragraph({
+              alignment: align,
+              spacing: { after: 20 },
+              children: [new TextRun({ text: line, size: 20 })],
+            }),
+        ),
+      ],
+    });
+
+  out.push(
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: [halfW, halfW],
+      rows: [
+        new TableRow({
+          children: [
+            madeCell(
+              "Dibuat untuk",
+              logoL,
+              cover.companyName || "-",
+              addressLines(cover.clientAddress),
+              AlignmentType.LEFT,
+            ),
+            madeCell(
+              "Dibuat oleh :",
+              logoR,
+              cover.vendorName || "-",
+              addressLines(cover.vendorAddress),
+              AlignmentType.RIGHT,
+            ),
+          ],
+        }),
+      ],
+    }),
+  );
+
   out.push(new Paragraph({ children: [new PageBreak()] }));
   return out;
 }
+
 
 
 // ---------- Table of Contents ----------
