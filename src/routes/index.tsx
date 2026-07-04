@@ -392,7 +392,7 @@ vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat
 executiveSummary=
 summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync.\\nRata-rata uptime diatas 180days.\\nDitemukan informasi log error.
 recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMenambahkan ram atau melakukan clear buff/cache pada memory server yang warning.\\nMelakukan sinkronisasi ntp/chrony.\\nPengecekan pada server dengan uptime diatas 180days.
-fileName=Laporan_PM_[bulan]_[tahun].docx
+fileName=Laporan_PM_[Customer]_[bulan]_[tahun].docx
 `;
     const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
