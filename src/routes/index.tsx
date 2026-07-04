@@ -376,6 +376,31 @@ function Home() {
               Logo vendor (MII) sudah fixed dari sistem — otomatis muncul di bawah kanan cover &amp; header konten.
             </p>
 
+            <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-medium">Upload Preset Metadata (.txt / .json)</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Format: <code className="font-mono">key=value</code> per baris atau JSON. Contoh:{" "}
+                  <code className="font-mono">companyName=PT ABC</code>. Gunakan <code>\n</code> untuk baris baru.
+                </div>
+              </div>
+              <label
+                htmlFor="preset-upload"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+              >
+                <Upload className="h-3 w-3" /> Pilih file
+                <input
+                  id="preset-upload"
+                  type="file"
+                  accept=".txt,.json,text/plain,application/json"
+                  className="hidden"
+                  onChange={(e) => onPresetFile(e.target.files)}
+                />
+              </label>
+            </div>
+
+
+
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Judul Laporan" v={cover.reportTitle} onChange={(v) => set("reportTitle", v)} />
