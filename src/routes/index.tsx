@@ -219,33 +219,64 @@ function Home() {
     return out as Partial<CoverInput>;
   }
 
+  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026")
+  // atau fallback ke tanggal hari ini.
+  function resolveFileNameTemplate(tpl: string, periode: string): string {
+    const monthsID = [
+      "Januari","Februari","Maret","April","Mei","Juni",
+      "Juli","Agustus","September","Oktober","November","Desember",
+    ];
+    let bulan = "";
+    let tahun = "";
+    const parts = (periode || "").trim().split(/\s+/);
+    if (parts.length >= 2) {
+      bulan = parts[0];
+      tahun = parts[parts.length - 1];
+    } else {
+      const d = new Date();
+      bulan = monthsID[d.getMonth()];
+      tahun = String(d.getFullYear());
+    }
+    return tpl
+      .replace(/\[bulan\]/gi, bulan)
+      .replace(/\[tahun\]/gi, tahun);
+  }
+
   async function onPresetFile(list: FileList | null) {
     const f = list?.[0];
     if (!f) return;
     try {
       const text = await f.text();
       const preset = parsePreset(text);
-      const keys = Object.keys(preset) as (keyof CoverInput)[];
+      const keys = Object.keys(preset) as string[];
       const allowed: (keyof CoverInput)[] = [
         "reportTitle", "subtitle", "companyName", "operatingSystem", "pelaksana",
         "tanggal", "contractNo", "periode", "vendorName", "reviewerClient",
         "reviewerVendor", "reviewerVendorRole", "reviewerDate", "executiveSummary",
         "summaryConclusion", "recommendation", "clientAddress", "vendorAddress",
       ];
-      const filtered = keys.filter((k) => allowed.includes(k));
-      if (filtered.length === 0) {
+      const filtered = keys.filter((k) => (allowed as string[]).includes(k));
+      const hasFileName = typeof (preset as Record<string, unknown>).fileName === "string";
+      if (filtered.length === 0 && !hasFileName) {
         toast.error("Tidak ada field valid ditemukan di preset");
         return;
       }
+      let nextPeriode = cover.periode;
       setCover((c) => {
         const next = { ...c };
         for (const k of filtered) {
           const v = (preset as Record<string, unknown>)[k as string];
           if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
         }
+        nextPeriode = next.periode;
         return next;
       });
-      toast.success(`Preset dimuat (${filtered.length} field)`);
+      if (hasFileName) {
+        const rawName = String((preset as Record<string, unknown>).fileName || "");
+        const resolved = resolveFileNameTemplate(rawName, nextPeriode);
+        setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
+      }
+      toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
     } catch (e) {
       console.error(e);
       toast.error("Gagal baca preset");
