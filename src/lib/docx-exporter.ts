@@ -12,7 +12,7 @@ import {
   BorderStyle,
   ShadingType,
   PageBreak,
-  TableOfContents,
+  // TableOfContents removed — TOC dirender manual dengan dot-leader.
   LevelFormat,
   PageOrientation,
   VerticalAlign,
@@ -27,6 +27,7 @@ import {
   TextWrappingType,
   TabStopType,
   TabStopPosition,
+  LeaderType,
   TableLayoutType,
 } from "docx";
 
@@ -263,7 +264,7 @@ function buildCover(
 
   // Spacer untuk mendorong title block ke area blue panel (kira-kira di tengah atas).
   // Disesuaikan dengan template PDF referensi (title jatuh di panel biru bawah image band).
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 20; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -438,23 +439,43 @@ function buildTocEntries(pms: ParsedPM[]) {
   ];
 }
 
-function buildToc(pms: ParsedPM[]): (Paragraph | TableOfContents)[] {
-  const cachedEntries = buildTocEntries(pms);
-  return [
+function buildToc(pms: ParsedPM[]): Paragraph[] {
+  const entries = buildTocEntries(pms);
+  const out: Paragraph[] = [];
+
+  // Heading judul TOC — konsisten mengikuti gaya PDF referensi.
+  out.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [new TextRun({ text: "Table of Contents", size: 32, bold: true })],
+      spacing: { before: 0, after: 360 },
+      children: [
+        new TextRun({ text: "DAFTAR ISI", size: 32, bold: true, color: "1F4E79" }),
+      ],
     }),
-    new TableOfContents("Contents", {
-      hyperlink: true,
-      headingStyleRange: "1-3",
-      useAppliedParagraphOutlineLevel: true,
-      beginDirty: true,
-      cachedEntries,
-    }),
-    new Paragraph({ children: [new PageBreak()] }),
-  ];
+  );
+
+  // Entri TOC dengan dot-leader tab stop ke posisi kanan.
+  for (const e of entries) {
+    const isL1 = e.level === 1;
+    const indent = isL1 ? 0 : 360; // level-2 diberi indentasi 0.25"
+    out.push(
+      new Paragraph({
+        spacing: { before: isL1 ? 120 : 40, after: isL1 ? 40 : 20, line: 280 },
+        indent: { left: indent },
+        tabStops: [
+          { type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA - 40, leader: LeaderType.DOT },
+        ],
+        children: [
+          new TextRun({ text: e.title, size: isL1 ? 22 : 20, bold: isL1 }),
+          new TextRun({ text: "\t", size: isL1 ? 22 : 20 }),
+          new TextRun({ text: String(e.page), size: isL1 ? 22 : 20, bold: isL1 }),
+        ],
+      }),
+    );
+  }
+
+  out.push(new Paragraph({ children: [new PageBreak()] }));
+  return out;
 }
 
 // ---------- document control ----------
@@ -890,7 +911,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
       .filter(Boolean)
       .map((l) => bullet(l.replace(/^[-•*]\s*/, "")));
 
-  const children: (Paragraph | Table | TableOfContents)[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // Load default cover background (bundled) unless user provided one.
   const bg = cover.coverBackgroundDataUrl
