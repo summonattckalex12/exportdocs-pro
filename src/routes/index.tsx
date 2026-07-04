@@ -373,7 +373,7 @@ function Home() {
   function downloadPresetTemplate() {
     const tpl = `# Preset Metadata ExcportCuy
 # Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat / paragraf.
-# fileName mendukung placeholder [bulan] dan [tahun] (diambil dari periode).
+# fileName mendukung placeholder [Customer], [bulan], [tahun] (Customer dari companyName; bulan/tahun dari periode).
 reportTitle=LAPORAN PREVENTIVE MAINTENANCE
 subtitle=Perangkat Lunak
 companyName=PT. Contoh Customer
