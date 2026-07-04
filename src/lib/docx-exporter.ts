@@ -261,29 +261,28 @@ function buildCover(
     );
   }
 
-  // Spacer to push title block below the top decorative image area of the background.
-  // Cover intentionally has NO logos at the top — logos live in the bottom block.
-  // 10x enter agar posisi judul turun mengikuti template (blue panel).
-  for (let i = 0; i < 10; i++) {
+  // Spacer untuk mendorong title block ke area blue panel (kira-kira di tengah atas).
+  // Disesuaikan dengan template PDF referensi.
+  for (let i = 0; i < 9; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
 
   // ---- Title block (right-aligned, white on the blue panel of the bg) ----
-  const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number }) =>
+  const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number; spaceBefore?: number }) =>
     new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 20, after: opts.spaceAfter ?? 40 },
+      spacing: { before: opts.spaceBefore ?? 20, after: opts.spaceAfter ?? 60 },
       children: [new TextRun({ text, size: opts.size, bold: opts.bold, color: opts.color ?? "FFFFFF" })],
     });
 
-  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 40, bold: true, spaceAfter: 80 }));
-  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 24 }));
-  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 24 }));
+  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 40, bold: true, spaceAfter: 120, spaceBefore: 40 }));
+  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 24, spaceAfter: 60 }));
+  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 24, spaceAfter: 60 }));
   out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 20, spaceAfter: 80 }));
 
-  // Spacer before confidentiality box (push it to middle-lower area)
-  for (let i = 0; i < 6; i++) {
+  // Spacer sebelum confidentiality box (dorong ke area tengah-bawah)
+  for (let i = 0; i < 7; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
