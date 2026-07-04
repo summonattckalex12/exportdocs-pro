@@ -1243,11 +1243,59 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
 // ============================================================================
 // Report Summary (Warning & Critical) — file DOCX terpisah untuk analisa data
 // ============================================================================
+function logSignature(line: string): string {
+  let s = line.replace(/\s+/g, " ").trim();
+  // Strip common syslog/journal timestamps at start (e.g. "Jul  4 08:09:12", "2026-07-04T08:09:12.123+07:00", "[Sat Jul  4 08:09:12 2026]")
+  s = s.replace(/^\[[^\]]+\]\s*/, "");
+  s = s.replace(/^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:?\d{2}|Z)?\s*/, "");
+  s = s.replace(/^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s*/, "");
+  s = s.replace(/^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}(?:\s+\d{4})?\s*/, "");
+  s = s.replace(/^\d{2}:\d{2}:\d{2}(?:\.\d+)?\s*/, "");
+  return s.toLowerCase();
+}
+
+function dedupeLogValue(value: string): string {
+  if (!value || !value.includes("\n")) {
+    // still dedupe if pipe/semicolon separated? keep as-is when single line
+    return value;
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of value.split(/\r?\n/)) {
+    const sig = logSignature(raw);
+    if (!sig) {
+      // preserve blank line only if previous kept line wasn't blank
+      if (out.length && out[out.length - 1] !== "") out.push("");
+      continue;
+    }
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    out.push(raw.replace(/\s+$/, ""));
+  }
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.join("\n");
+}
+
+function dedupeLogSection(s: PMSection): PMSection {
+  const seenRow = new Set<string>();
+  const rows: typeof s.rows = [];
+  for (const r of s.rows) {
+    const dedupedValue = dedupeLogValue(r.value || "");
+    const sig = `${(r.label || "").toLowerCase()}|${logSignature(dedupedValue)}`;
+    if (seenRow.has(sig)) continue;
+    seenRow.add(sig);
+    rows.push({ ...r, value: dedupedValue });
+  }
+  return { ...s, rows };
+}
+
 function logErrorSections(pm: ParsedPM): PMSection[] {
-  return pm.sections.filter((s) => {
-    const t = s.title.toLowerCase();
-    return t.includes("error log") || t.includes("log error") || t.includes("kill");
-  });
+  return pm.sections
+    .filter((s) => {
+      const t = s.title.toLowerCase();
+      return t.includes("error log") || t.includes("log error") || t.includes("kill");
+    })
+    .map(dedupeLogSection);
 }
 
 async function _buildReportSummaryBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
