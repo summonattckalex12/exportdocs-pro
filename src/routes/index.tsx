@@ -520,7 +520,8 @@ fileName=Laporan_PM_[Customer]_[bulan]_[tahun].docx
               <Field label="Reviewer Vendor" v={cover.reviewerVendor} onChange={(v) => set("reviewerVendor", v)} />
               <Field label="Jabatan Reviewer Vendor" v={cover.reviewerVendorRole} onChange={(v) => set("reviewerVendorRole", v)} />
               <DateField label="Tanggal Reviewer" v={cover.reviewerDate} onChange={(v) => set("reviewerDate", v)} />
-              <Field label="Nama File Output" v={filename} onChange={setFilename} />
+              <Field label="Nama File Output" v={filename} onChange={(v) => { filenameEditedRef.current = true; setFilename(v); }} />
+              <p className="text-[10px] text-muted-foreground">Otomatis: Laporan_PM_[Customer]_[bulan]_[tahun].docx (berdasarkan Nama Customer &amp; Periode).</p>
             </div>
 
             <div>
