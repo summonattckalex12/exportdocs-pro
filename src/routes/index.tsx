@@ -187,6 +187,72 @@ function Home() {
     }
   }
 
+  // Parse preset TXT: baris `key=value`, `key:value`, atau JSON.
+  // Baris diawali `#` atau `;` diabaikan. Multiline via `\n` literal.
+  function parsePreset(text: string): Partial<CoverInput> {
+    const trimmed = text.trim();
+    // Coba JSON dulu
+    if (trimmed.startsWith("{")) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj && typeof obj === "object") return obj as Partial<CoverInput>;
+      } catch {
+        /* fallthrough */
+      }
+    }
+    const out: Record<string, string> = {};
+    for (const raw of trimmed.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#") || line.startsWith(";")) continue;
+      const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*[:=]\s*(.*)$/);
+      if (!m) continue;
+      const key = m[1];
+      let val = m[2];
+      // Strip surrounding quotes
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      // Convert literal \n → newline
+      val = val.replace(/\\n/g, "\n");
+      out[key] = val;
+    }
+    return out as Partial<CoverInput>;
+  }
+
+  async function onPresetFile(list: FileList | null) {
+    const f = list?.[0];
+    if (!f) return;
+    try {
+      const text = await f.text();
+      const preset = parsePreset(text);
+      const keys = Object.keys(preset) as (keyof CoverInput)[];
+      const allowed: (keyof CoverInput)[] = [
+        "reportTitle", "subtitle", "companyName", "operatingSystem", "pelaksana",
+        "tanggal", "contractNo", "periode", "vendorName", "reviewerClient",
+        "reviewerVendor", "reviewerVendorRole", "reviewerDate", "executiveSummary",
+        "summaryConclusion", "recommendation", "clientAddress", "vendorAddress",
+      ];
+      const filtered = keys.filter((k) => allowed.includes(k));
+      if (filtered.length === 0) {
+        toast.error("Tidak ada field valid ditemukan di preset");
+        return;
+      }
+      setCover((c) => {
+        const next = { ...c };
+        for (const k of filtered) {
+          const v = (preset as Record<string, unknown>)[k as string];
+          if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
+        }
+        return next;
+      });
+      toast.success(`Preset dimuat (${filtered.length} field)`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal baca preset");
+    }
+  }
+
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -309,6 +375,31 @@ function Home() {
             <p className="text-[11px] text-muted-foreground -mt-2">
               Logo vendor (MII) sudah fixed dari sistem — otomatis muncul di bawah kanan cover &amp; header konten.
             </p>
+
+            <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-medium">Upload Preset Metadata (.txt / .json)</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Format: <code className="font-mono">key=value</code> per baris atau JSON. Contoh:{" "}
+                  <code className="font-mono">companyName=PT ABC</code>. Gunakan <code>\n</code> untuk baris baru.
+                </div>
+              </div>
+              <label
+                htmlFor="preset-upload"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+              >
+                <Upload className="h-3 w-3" /> Pilih file
+                <input
+                  id="preset-upload"
+                  type="file"
+                  accept=".txt,.json,text/plain,application/json"
+                  className="hidden"
+                  onChange={(e) => onPresetFile(e.target.files)}
+                />
+              </label>
+            </div>
+
+
 
 
             <div className="grid gap-4 sm:grid-cols-2">
