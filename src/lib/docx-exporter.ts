@@ -430,8 +430,11 @@ function buildTocEntries(pms: ParsedPM[]) {
     { title: "Executive Summary", level: 2, page: overviewPage },
     { title: "List Server", level: 2, page: overviewPage },
     { title: "Ringkasan Hasil Preventive Maintenance", level: 2, page: overviewPage },
+    { title: "Keterangan Threshold Status", level: 2, page: overviewPage },
+    { title: "Report Summary (Warning & Critical)", level: 2, page: overviewPage },
     { title: "Summary Conclusion", level: 2, page: overviewPage },
     { title: "Recommendation", level: 2, page: overviewPage },
+
     { title: "Lampiran Pekerjaan Preventive Maintenance", level: 1, page: lampiranPage },
     ...pms.map((pm, i) => ({ title: `${i + 1}. ${safeDocxText(pm.hostname || `Server ${i + 1}`)}`, level: 2, page: lampiranPage + i })),
   ];
