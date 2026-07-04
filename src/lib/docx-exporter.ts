@@ -928,8 +928,9 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   );
   children.push(thresholdTable());
 
-  children.push(heading("Report Summary (Warning & Critical)", HeadingLevel.HEADING_2));
-  warningCriticalReport(pms).forEach((p) => children.push(p));
+  // Report Summary (Warning & Critical) sekarang di-generate sebagai file terpisah
+  // via buildAndDownloadReportSummary() untuk memudahkan analisa data.
+
 
 
   children.push(heading("Summary Conclusion", HeadingLevel.HEADING_2));
