@@ -463,7 +463,7 @@ function buildToc(pms: ParsedPM[]): Paragraph[] {
         spacing: { before: isL1 ? 120 : 40, after: isL1 ? 40 : 20, line: 280 },
         indent: { left: indent },
         tabStops: [
-          { type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA - 40, leader: "dot" },
+          { type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA - 40, leader: LeaderType.DOT },
         ],
         children: [
           new TextRun({ text: e.title, size: isL1 ? 22 : 20, bold: isL1 }),
