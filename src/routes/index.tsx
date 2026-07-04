@@ -252,13 +252,21 @@ function Home() {
     }
     const safeCustomer = (customer || "Customer")
       .replace(/[\\/:*?"<>|]+/g, "")
+      .replace(/[.,]+/g, "")
       .replace(/\s+/g, "_")
       .replace(/_+/g, "_")
       .replace(/^_|_$/g, "");
-    return tpl
-      .replace(/\[bulan\]/gi, bulan)
-      .replace(/\[tahun\]/gi, tahun)
+    const safeBulan = bulan.trim().replace(/\s+/g, "_");
+    const safeTahun = tahun.trim().replace(/\s+/g, "_");
+    const resolved = tpl
+      .replace(/\[bulan\]/gi, safeBulan)
+      .replace(/\[tahun\]/gi, safeTahun)
       .replace(/\[customer\]/gi, safeCustomer);
+    // Rapikan: buang spasi berlebih & underscore ganda
+    return resolved
+      .replace(/\s+/g, "")
+      .replace(/_+/g, "_")
+      .replace(/_+(\.docx)$/i, "$1");
   }
 
   async function onPresetFile(list: FileList | null) {
