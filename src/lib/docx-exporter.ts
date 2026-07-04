@@ -910,7 +910,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
       .filter(Boolean)
       .map((l) => bullet(l.replace(/^[-•*]\s*/, "")));
 
-  const children: (Paragraph | Table | TableOfContents)[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // Load default cover background (bundled) unless user provided one.
   const bg = cover.coverBackgroundDataUrl
