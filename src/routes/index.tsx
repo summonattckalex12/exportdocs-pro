@@ -268,6 +268,7 @@ function Home() {
         return;
       }
       let nextPeriode = cover.periode;
+      let nextCustomer = cover.companyName;
       setCover((c) => {
         const next = { ...c };
         for (const k of filtered) {
@@ -275,11 +276,12 @@ function Home() {
           if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
         }
         nextPeriode = next.periode;
+        nextCustomer = next.companyName;
         return next;
       });
       if (hasFileName) {
         const rawName = String((preset as Record<string, unknown>).fileName || "");
-        const resolved = resolveFileNameTemplate(rawName, nextPeriode);
+        const resolved = resolveFileNameTemplate(rawName, nextPeriode, nextCustomer);
         setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
       }
       toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
