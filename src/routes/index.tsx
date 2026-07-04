@@ -122,6 +122,7 @@ function Home() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [filename, setFilename] = useState("Laporan_PM.docx");
+  const filenameEditedRef = useRef(false);
 
   const summaries = useMemo(() => files.map((f) => summarizePM(f.pm)), [files]);
 
