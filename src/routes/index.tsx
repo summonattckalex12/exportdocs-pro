@@ -128,6 +128,18 @@ function Home() {
 
   const set = <K extends keyof CoverInput>(k: K, v: CoverInput[K]) => setCover((c) => ({ ...c, [k]: v }));
 
+  // Auto-derive nama file output: Laporan_PM_[Customer]_[bulan]_[tahun].docx
+  // Berjalan otomatis selama user belum mengubah field manual atau load preset dengan fileName.
+  useEffect(() => {
+    if (filenameEditedRef.current) return;
+    const resolved = resolveFileNameTemplate(
+      "Laporan_PM_[Customer]_[bulan]_[tahun].docx",
+      cover.periode,
+      cover.companyName,
+    );
+    setFilename(resolved);
+  }, [cover.companyName, cover.periode]);
+
   async function ingestHtml(name: string, text: string, items: FileItem[]) {
     const pm = parsePMHtml(text, name.replace(/\.html?$/i, ""));
     items.push({ id: `${name}-${Math.random().toString(36).slice(2, 8)}`, name, pm });
