@@ -263,9 +263,11 @@ function buildCover(
 
   // Spacer to push title block below the top decorative image area of the background.
   // Cover intentionally has NO logos at the top — logos live in the bottom block.
-  for (let i = 0; i < 4; i++) {
+  // Extra spacers agar posisi judul turun mengikuti template (blue panel).
+  for (let i = 0; i < 9; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
+
 
   // ---- Title block (right-aligned, white on the blue panel of the bg) ----
   const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number }) =>
