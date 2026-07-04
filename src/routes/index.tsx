@@ -437,19 +437,28 @@ recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMe
                   <code className="font-mono">companyName=PT ABC</code>. Gunakan <code>\n</code> untuk baris baru.
                 </div>
               </div>
-              <label
-                htmlFor="preset-upload"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
-              >
-                <Upload className="h-3 w-3" /> Pilih file
-                <input
-                  id="preset-upload"
-                  type="file"
-                  accept=".txt,.json,text/plain,application/json"
-                  className="hidden"
-                  onChange={(e) => onPresetFile(e.target.files)}
-                />
-              </label>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={downloadPresetTemplate}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+                >
+                  <Download className="h-3 w-3" /> Template
+                </button>
+                <label
+                  htmlFor="preset-upload"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+                >
+                  <Upload className="h-3 w-3" /> Pilih file
+                  <input
+                    id="preset-upload"
+                    type="file"
+                    accept=".txt,.json,text/plain,application/json"
+                    className="hidden"
+                    onChange={(e) => onPresetFile(e.target.files)}
+                  />
+                </label>
+              </div>
             </div>
 
 
