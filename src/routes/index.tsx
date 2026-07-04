@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import JSZip from "jszip";
@@ -122,10 +122,23 @@ function Home() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [filename, setFilename] = useState("Laporan_PM.docx");
+  const filenameEditedRef = useRef(false);
 
   const summaries = useMemo(() => files.map((f) => summarizePM(f.pm)), [files]);
 
   const set = <K extends keyof CoverInput>(k: K, v: CoverInput[K]) => setCover((c) => ({ ...c, [k]: v }));
+
+  // Auto-derive nama file output: Laporan_PM_[Customer]_[bulan]_[tahun].docx
+  // Berjalan otomatis selama user belum mengubah field manual atau load preset dengan fileName.
+  useEffect(() => {
+    if (filenameEditedRef.current) return;
+    const resolved = resolveFileNameTemplate(
+      "Laporan_PM_[Customer]_[bulan]_[tahun].docx",
+      cover.periode,
+      cover.companyName,
+    );
+    setFilename(resolved);
+  }, [cover.companyName, cover.periode]);
 
   async function ingestHtml(name: string, text: string, items: FileItem[]) {
     const pm = parsePMHtml(text, name.replace(/\.html?$/i, ""));
@@ -282,6 +295,7 @@ function Home() {
       if (hasFileName) {
         const rawName = String((preset as Record<string, unknown>).fileName || "");
         const resolved = resolveFileNameTemplate(rawName, nextPeriode, nextCustomer);
+        filenameEditedRef.current = true;
         setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
       }
       toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
@@ -519,7 +533,8 @@ fileName=Laporan_PM_[Customer]_[bulan]_[tahun].docx
               <Field label="Reviewer Vendor" v={cover.reviewerVendor} onChange={(v) => set("reviewerVendor", v)} />
               <Field label="Jabatan Reviewer Vendor" v={cover.reviewerVendorRole} onChange={(v) => set("reviewerVendorRole", v)} />
               <DateField label="Tanggal Reviewer" v={cover.reviewerDate} onChange={(v) => set("reviewerDate", v)} />
-              <Field label="Nama File Output" v={filename} onChange={setFilename} />
+              <Field label="Nama File Output" v={filename} onChange={(v) => { filenameEditedRef.current = true; setFilename(v); }} />
+              <p className="text-[10px] text-muted-foreground">Otomatis: Laporan_PM_[Customer]_[bulan]_[tahun].docx (berdasarkan Nama Customer &amp; Periode).</p>
             </div>
 
             <div>
