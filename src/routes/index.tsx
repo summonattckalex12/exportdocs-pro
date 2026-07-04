@@ -283,6 +283,7 @@ function Home() {
       if (hasFileName) {
         const rawName = String((preset as Record<string, unknown>).fileName || "");
         const resolved = resolveFileNameTemplate(rawName, nextPeriode, nextCustomer);
+        filenameEditedRef.current = true;
         setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
       }
       toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
