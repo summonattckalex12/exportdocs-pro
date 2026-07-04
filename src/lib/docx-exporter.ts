@@ -637,9 +637,9 @@ function thresholdTable(): Table {
   });
   const rows: [string, string, string, string][] = [
     ["Mountpoint / Disk", "< 80%", "80% – 89%", ">= 90%"],
-    ["CPU Usage", "< 70%", "70% – 84%", ">= 85%"],
+    ["CPU Usage", "<= 80%", "> 80% – 89%", ">= 90%"],
     ["Memory Usage", "< 80%", "80% – 89%", ">= 90%"],
-    ["Uptime", "Server up sesuai jadwal", "Reboot tidak terjadwal", "Server down"],
+    ["Uptime", "<= 180 hari", "> 180 hari", "Server down / reboot gagal"],
     ["Time & Date Sync", "Tersinkronisasi (ntp/chrony)", "Drift kecil / tidak konsisten", "Tidak sinkron / service mati"],
     ["Log Kill Memory", "Tidak ada OOM kill", "Ada kill non-kritikal", "OOM kill pada service kritikal"],
     ["Log Error", "Tidak ada error signifikan", "Error minor / berulang ringan", "Error kritikal / berulang tinggi"],
