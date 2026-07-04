@@ -623,6 +623,126 @@ function resultSummaryTable(sums: SummaryRow[]): Table {
   return new Table({ width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
 }
 
+// ---------- threshold explanation table ----------
+function thresholdTable(): Table {
+  const w = [2200, 2400, 2400, CONTENT_WIDTH_DXA - 7000];
+  const head = new TableRow({
+    tableHeader: true,
+    children: ["Parameter", "OK", "Warning", "Critical"].map((h, i) =>
+      textCell(h, { width: w[i], fill: COLOR_HEADER, bold: true, align: AlignmentType.CENTER }),
+    ),
+  });
+  const rows: [string, string, string, string][] = [
+    ["Mountpoint / Disk", "< 80%", "80% – 89%", ">= 90%"],
+    ["CPU Usage", "< 70%", "70% – 84%", ">= 85%"],
+    ["Memory Usage", "< 80%", "80% – 89%", ">= 90%"],
+    ["Uptime", "Server up sesuai jadwal", "Reboot tidak terjadwal", "Server down"],
+    ["Time & Date Sync", "Tersinkronisasi (ntp/chrony)", "Drift kecil / tidak konsisten", "Tidak sinkron / service mati"],
+    ["Log Kill Memory", "Tidak ada OOM kill", "Ada kill non-kritikal", "OOM kill pada service kritikal"],
+    ["Log Error", "Tidak ada error signifikan", "Error minor / berulang ringan", "Error kritikal / berulang tinggi"],
+  ];
+  const body = rows.map(
+    ([p, ok, wn, cr]) =>
+      new TableRow({
+        children: [
+          textCell(p, { width: w[0], bold: true, fill: "F7F7F7" }),
+          textCell(ok, { width: w[1], fill: COLOR_OK, align: AlignmentType.CENTER, size: 18 }),
+          textCell(wn, { width: w[2], fill: COLOR_WARN, align: AlignmentType.CENTER, size: 18 }),
+          textCell(cr, { width: w[3], fill: COLOR_CRIT, align: AlignmentType.CENTER, size: 18, color: "FFFFFF" }),
+        ],
+      }),
+  );
+  return new Table({ width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
+}
+
+// ---------- warning/critical detail report ----------
+function warningCriticalReport(pms: ParsedPM[]): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = [];
+  const w = [800, 2400, 2600, CONTENT_WIDTH_DXA - 5800 - 1200, 1200];
+  const head = new TableRow({
+    tableHeader: true,
+    children: ["No", "Hostname", "Section", "Temuan", "Status"].map((h, i) =>
+      textCell(h, { width: w[i], fill: COLOR_HEADER, bold: true, align: AlignmentType.CENTER }),
+    ),
+  });
+
+  const bodyRows: TableRow[] = [];
+  let idx = 0;
+  for (const pm of pms) {
+    for (const sec of pm.sections) {
+      for (const row of sec.rows) {
+        if (row.status === "Warning" || row.status === "Critical") {
+          idx += 1;
+          const val = safeDocxText(row.value || "");
+          const short = val.length > 200 ? val.slice(0, 200) + "…" : val;
+          bodyRows.push(
+            new TableRow({
+              children: [
+                textCell(String(idx), { width: w[0], align: AlignmentType.CENTER, size: 18 }),
+                textCell(safeDocxText(pm.hostname), { width: w[1], bold: true, size: 18 }),
+                textCell(safeDocxText(sec.title), { width: w[2], size: 18 }),
+                cell(
+                  [
+                    new Paragraph({ children: [new TextRun({ text: safeDocxText(row.label), bold: true, size: 18 })] }),
+                    new Paragraph({ children: [new TextRun({ text: short, size: 16, font: "Consolas" })] }),
+                  ],
+                  { width: w[3] },
+                ),
+                textCell(row.status || "", {
+                  width: w[4],
+                  fill: statusFill(row.status || ""),
+                  align: AlignmentType.CENTER,
+                  bold: true,
+                  size: 18,
+                  color: row.status === "Critical" ? "FFFFFF" : undefined,
+                }),
+              ],
+            }),
+          );
+        }
+      }
+    }
+  }
+
+  if (bodyRows.length === 0) {
+    out.push(
+      new Paragraph({
+        spacing: { before: 100, after: 100 },
+        children: [
+          new TextRun({
+            text: "Tidak ditemukan temuan berstatus Warning atau Critical pada seluruh server. Semua parameter dalam kondisi OK.",
+            italics: true,
+            size: 20,
+          }),
+        ],
+      }),
+    );
+    return out;
+  }
+
+  out.push(
+    new Paragraph({
+      spacing: { before: 80, after: 120 },
+      children: [
+        new TextRun({
+          text: `Total temuan Warning/Critical: ${bodyRows.length} item. Berikut rinciannya:`,
+          size: 20,
+        }),
+      ],
+    }),
+  );
+  out.push(
+    new Table({
+      width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      columnWidths: w,
+      layout: TableLayoutType.FIXED,
+      rows: [head, ...bodyRows],
+    }),
+  );
+  return out;
+}
+
+
 // ---------- per-host section table ----------
 function sectionTable(section: PMSection): Table {
   const wLabel = 2400;
