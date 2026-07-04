@@ -366,15 +366,6 @@ recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMe
     }, 2000);
   }
 
-  // dummy to keep single closing below
-  function __noop() {
-    // no-op
-    return;
-  }
-  void __noop;
-  async function __closeHandlers() {
-  }
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
