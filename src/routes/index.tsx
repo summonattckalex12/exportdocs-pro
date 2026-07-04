@@ -219,33 +219,64 @@ function Home() {
     return out as Partial<CoverInput>;
   }
 
+  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026")
+  // atau fallback ke tanggal hari ini.
+  function resolveFileNameTemplate(tpl: string, periode: string): string {
+    const monthsID = [
+      "Januari","Februari","Maret","April","Mei","Juni",
+      "Juli","Agustus","September","Oktober","November","Desember",
+    ];
+    let bulan = "";
+    let tahun = "";
+    const parts = (periode || "").trim().split(/\s+/);
+    if (parts.length >= 2) {
+      bulan = parts[0];
+      tahun = parts[parts.length - 1];
+    } else {
+      const d = new Date();
+      bulan = monthsID[d.getMonth()];
+      tahun = String(d.getFullYear());
+    }
+    return tpl
+      .replace(/\[bulan\]/gi, bulan)
+      .replace(/\[tahun\]/gi, tahun);
+  }
+
   async function onPresetFile(list: FileList | null) {
     const f = list?.[0];
     if (!f) return;
     try {
       const text = await f.text();
       const preset = parsePreset(text);
-      const keys = Object.keys(preset) as (keyof CoverInput)[];
+      const keys = Object.keys(preset) as string[];
       const allowed: (keyof CoverInput)[] = [
         "reportTitle", "subtitle", "companyName", "operatingSystem", "pelaksana",
         "tanggal", "contractNo", "periode", "vendorName", "reviewerClient",
         "reviewerVendor", "reviewerVendorRole", "reviewerDate", "executiveSummary",
         "summaryConclusion", "recommendation", "clientAddress", "vendorAddress",
       ];
-      const filtered = keys.filter((k) => allowed.includes(k));
-      if (filtered.length === 0) {
+      const filtered = keys.filter((k) => (allowed as string[]).includes(k));
+      const hasFileName = typeof (preset as Record<string, unknown>).fileName === "string";
+      if (filtered.length === 0 && !hasFileName) {
         toast.error("Tidak ada field valid ditemukan di preset");
         return;
       }
+      let nextPeriode = cover.periode;
       setCover((c) => {
         const next = { ...c };
         for (const k of filtered) {
           const v = (preset as Record<string, unknown>)[k as string];
           if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
         }
+        nextPeriode = next.periode;
         return next;
       });
-      toast.success(`Preset dimuat (${filtered.length} field)`);
+      if (hasFileName) {
+        const rawName = String((preset as Record<string, unknown>).fileName || "");
+        const resolved = resolveFileNameTemplate(rawName, nextPeriode);
+        setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
+      }
+      toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
     } catch (e) {
       console.error(e);
       toast.error("Gagal baca preset");
@@ -333,7 +364,8 @@ function Home() {
 
   function downloadPresetTemplate() {
     const tpl = `# Preset Metadata ExcportCuy
-# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat.
+# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat / paragraf.
+# fileName mendukung placeholder [bulan] dan [tahun] (diambil dari periode).
 reportTitle=LAPORAN PREVENTIVE MAINTENANCE
 subtitle=Perangkat Lunak
 companyName=PT. Contoh Customer
@@ -350,8 +382,9 @@ reviewerDate=2026-07-04
 clientAddress=Jl. Contoh No 1\\nJakarta 12190
 vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat 11470
 executiveSummary=
-summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync dalam kondisi baik.
-recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMelakukan sinkronisasi ntp/chrony.
+summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync.\\nRata-rata uptime diatas 180days.\\nDitemukan informasi log error.
+recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMenambahkan ram atau melakukan clear buff/cache pada memory server yang warning.\\nMelakukan sinkronisasi ntp/chrony.\\nPengecekan pada server dengan uptime diatas 180days.
+fileName=Laporan_PM_[bulan]_[tahun].docx
 `;
     const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
