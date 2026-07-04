@@ -364,7 +364,8 @@ function Home() {
 
   function downloadPresetTemplate() {
     const tpl = `# Preset Metadata ExcportCuy
-# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat.
+# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat / paragraf.
+# fileName mendukung placeholder [bulan] dan [tahun] (diambil dari periode).
 reportTitle=LAPORAN PREVENTIVE MAINTENANCE
 subtitle=Perangkat Lunak
 companyName=PT. Contoh Customer
@@ -381,8 +382,9 @@ reviewerDate=2026-07-04
 clientAddress=Jl. Contoh No 1\\nJakarta 12190
 vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat 11470
 executiveSummary=
-summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync dalam kondisi baik.
-recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMelakukan sinkronisasi ntp/chrony.
+summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync.\\nRata-rata uptime diatas 180days.\\nDitemukan informasi log error.
+recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMenambahkan ram atau melakukan clear buff/cache pada memory server yang warning.\\nMelakukan sinkronisasi ntp/chrony.\\nPengecekan pada server dengan uptime diatas 180days.
+fileName=Laporan_PM_[bulan]_[tahun].docx
 `;
     const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
