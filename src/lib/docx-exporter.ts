@@ -262,8 +262,8 @@ function buildCover(
   }
 
   // Spacer untuk mendorong title block ke area blue panel (kira-kira di tengah atas).
-  // Disesuaikan dengan template PDF referensi.
-  for (let i = 0; i < 9; i++) {
+  // Disesuaikan dengan template PDF referensi (title jatuh di panel biru bawah image band).
+  for (let i = 0; i < 15; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -272,17 +272,17 @@ function buildCover(
   const rightPar = (text: string, opts: { size: number; bold?: boolean; color?: string; spaceAfter?: number; spaceBefore?: number }) =>
     new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: opts.spaceBefore ?? 20, after: opts.spaceAfter ?? 60 },
+      spacing: { before: opts.spaceBefore ?? 0, after: opts.spaceAfter ?? 40 },
       children: [new TextRun({ text, size: opts.size, bold: opts.bold, color: opts.color ?? "FFFFFF" })],
     });
 
-  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 40, bold: true, spaceAfter: 120, spaceBefore: 40 }));
-  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 24, spaceAfter: 60 }));
-  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 24, spaceAfter: 60 }));
-  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 20, spaceAfter: 80 }));
+  out.push(rightPar((cover.reportTitle || "LAPORAN PREVENTIVE MAINTENANCE").toUpperCase(), { size: 40, bold: true, spaceAfter: 80, spaceBefore: 0 }));
+  out.push(rightPar(`- ${cover.operatingSystem || "Red Hat Enterprise Linux"} -`, { size: 24, spaceAfter: 40 }));
+  out.push(rightPar(`Periode ${cover.periode || "-"}`, { size: 24, spaceAfter: 40 }));
+  out.push(rightPar(`No Contract : ${cover.contractNo || "-"}`, { size: 20, spaceAfter: 60 }));
 
   // Spacer sebelum confidentiality box (dorong ke area tengah-bawah)
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 4; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
