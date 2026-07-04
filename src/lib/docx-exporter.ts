@@ -391,14 +391,14 @@ function buildCover(
         new TableRow({
           children: [
             madeCell(
-              "Dibuat untuk",
+              "Prepared For :",
               logoL,
               cover.companyName || "-",
               addressLines(cover.clientAddress),
               AlignmentType.LEFT,
             ),
             madeCell(
-              "Dibuat oleh :",
+              "Prepared By :",
               logoR,
               cover.vendorName || "-",
               addressLines(cover.vendorAddress),
