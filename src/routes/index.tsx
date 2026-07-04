@@ -561,7 +561,7 @@ recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMe
 
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-3">
               <Button
                 onClick={handleExport}
                 disabled={busy}
@@ -570,8 +570,20 @@ recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMe
                 <Download className="h-4 w-4 mr-2" />
                 {busy ? "Membangun dokumen..." : "Export ke Word (.docx)"}
               </Button>
-              <p className="mt-3 text-[11px] text-muted-foreground text-center">
-                Table of Contents otomatis terisi; di Microsoft Word bisa tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk refresh nomor halaman.
+              <Button
+                onClick={handleExportReportSummary}
+                disabled={busy}
+                variant="outline"
+                className="w-full h-10"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {busy ? "Sedang memproses..." : "Export Report Summary (Warning & Critical)"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Report Summary di-generate sebagai file .docx terpisah — berisi rincian temuan Warning/Critical beserta remark dan isian log error tiap server, untuk mempermudah analisa data.
+              </p>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Table of Contents otomatis terisi; di Microsoft Word tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk refresh nomor halaman.
               </p>
             </CardContent>
           </Card>
