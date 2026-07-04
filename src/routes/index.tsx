@@ -30,7 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { parsePMHtml, summarizePM, type ParsedPM, type StatusKind } from "@/lib/pm-html-parser";
-import { buildAndDownloadDocx, type CoverInput } from "@/lib/docx-exporter";
+import { buildAndDownloadDocx, buildAndDownloadReportSummary, type CoverInput } from "@/lib/docx-exporter";
 import { archiveExport } from "@/lib/exports.functions";
 import { untar, ungzipToTar } from "@/lib/tar";
 import {
