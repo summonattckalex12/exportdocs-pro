@@ -264,7 +264,7 @@ function buildCover(
 
   // Spacer untuk mendorong title block ke area blue panel (kira-kira di tengah atas).
   // Disesuaikan dengan template PDF referensi (title jatuh di panel biru bawah image band).
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 20; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
