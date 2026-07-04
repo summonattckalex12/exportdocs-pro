@@ -313,6 +313,68 @@ function Home() {
     }
   }
 
+  async function handleExportReportSummary() {
+    if (files.length === 0) {
+      toast.error("Upload minimal 1 file HTML dulu ya");
+      return;
+    }
+    try {
+      setBusy(true);
+      const base = filename.replace(/\.docx$/i, "");
+      await buildAndDownloadReportSummary(cover, files.map((f) => f.pm), `${base}_ReportSummary.docx`);
+      toast.success("Report Summary berhasil dibuat 🔥");
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal membuat Report Summary. Cek console.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function downloadPresetTemplate() {
+    const tpl = `# Preset Metadata ExcportCuy
+# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat.
+reportTitle=LAPORAN PREVENTIVE MAINTENANCE
+subtitle=Perangkat Lunak
+companyName=PT. Contoh Customer
+operatingSystem=Red Hat Enterprise Linux
+pelaksana=Nama Engineer
+tanggal=2026-07-04
+contractNo=MCARE-XXXX-PO
+periode=Juli 2026
+vendorName=PT. Mitra Integrasi Informatika (MII)
+reviewerClient=Nama Reviewer Klien
+reviewerVendor=Nama Reviewer Vendor
+reviewerVendorRole=Technical Consultant
+reviewerDate=2026-07-04
+clientAddress=Jl. Contoh No 1\\nJakarta 12190
+vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat 11470
+executiveSummary=
+summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync dalam kondisi baik.
+recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMelakukan sinkronisasi ntp/chrony.
+`;
+    const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "preset_template.txt";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); } catch { /* noop */ }
+      URL.revokeObjectURL(url);
+    }, 2000);
+  }
+
+  // dummy to keep single closing below
+  function __noop() {
+    // no-op
+    return;
+  }
+  void __noop;
+  async function __closeHandlers() {
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
