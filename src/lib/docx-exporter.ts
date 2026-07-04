@@ -980,7 +980,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
               new Paragraph({
                 tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
                 children: [
-                  new TextRun({ text: `${cover.vendorName || "Vendor"} - PM ${cover.operatingSystem || ""}`, size: 18, color: "595959" }),
+                  new TextRun({ text: `${cover.companyName || "Customer"} - PM ${cover.operatingSystem || ""}`, size: 18, color: "595959" }),
                   new TextRun({ text: "\t" }),
                   new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true, color: "1F3864" }),
                   new TextRun({ text: " / ", size: 18, color: "595959" }),
