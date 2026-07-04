@@ -219,9 +219,9 @@ function Home() {
     return out as Partial<CoverInput>;
   }
 
-  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026")
-  // atau fallback ke tanggal hari ini.
-  function resolveFileNameTemplate(tpl: string, periode: string): string {
+  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026"),
+  // [Customer] dari `cover.companyName`. Fallback ke tanggal hari ini bila periode kosong.
+  function resolveFileNameTemplate(tpl: string, periode: string, customer: string): string {
     const monthsID = [
       "Januari","Februari","Maret","April","Mei","Juni",
       "Juli","Agustus","September","Oktober","November","Desember",
@@ -237,9 +237,15 @@ function Home() {
       bulan = monthsID[d.getMonth()];
       tahun = String(d.getFullYear());
     }
+    const safeCustomer = (customer || "Customer")
+      .replace(/[\\/:*?"<>|]+/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
     return tpl
       .replace(/\[bulan\]/gi, bulan)
-      .replace(/\[tahun\]/gi, tahun);
+      .replace(/\[tahun\]/gi, tahun)
+      .replace(/\[customer\]/gi, safeCustomer);
   }
 
   async function onPresetFile(list: FileList | null) {
