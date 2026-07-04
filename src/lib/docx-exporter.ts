@@ -27,6 +27,7 @@ import {
   TextWrappingType,
   TabStopType,
   TabStopPosition,
+  LeaderType,
   TableLayoutType,
 } from "docx";
 
