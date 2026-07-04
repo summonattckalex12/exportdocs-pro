@@ -1197,6 +1197,14 @@ function downloadBlob(blob: Blob, filename: string) {
   }, 4000);
 }
 
+export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], filename: string): Promise<Blob> {
+  const blob = await buildDocxBlob(cover, pms);
+  downloadBlob(blob, filename);
+  return blob;
+}
+
+
+
 
 // ============================================================================
 // Report Summary (Warning & Critical) — file DOCX terpisah untuk analisa data
