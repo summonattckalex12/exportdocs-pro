@@ -432,7 +432,6 @@ function buildTocEntries(pms: ParsedPM[]) {
     { title: "Ringkasan Hasil Preventive Maintenance", level: 2, page: overviewPage },
     { title: "Keterangan Threshold Status", level: 2, page: overviewPage },
     { title: "Summary Conclusion", level: 2, page: overviewPage },
-    { title: "Summary Conclusion", level: 2, page: overviewPage },
     { title: "Recommendation", level: 2, page: overviewPage },
 
     { title: "Lampiran Pekerjaan Preventive Maintenance", level: 1, page: lampiranPage },
