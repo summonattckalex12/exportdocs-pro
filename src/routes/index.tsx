@@ -187,6 +187,72 @@ function Home() {
     }
   }
 
+  // Parse preset TXT: baris `key=value`, `key:value`, atau JSON.
+  // Baris diawali `#` atau `;` diabaikan. Multiline via `\n` literal.
+  function parsePreset(text: string): Partial<CoverInput> {
+    const trimmed = text.trim();
+    // Coba JSON dulu
+    if (trimmed.startsWith("{")) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj && typeof obj === "object") return obj as Partial<CoverInput>;
+      } catch {
+        /* fallthrough */
+      }
+    }
+    const out: Record<string, string> = {};
+    for (const raw of trimmed.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#") || line.startsWith(";")) continue;
+      const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*[:=]\s*(.*)$/);
+      if (!m) continue;
+      const key = m[1];
+      let val = m[2];
+      // Strip surrounding quotes
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      // Convert literal \n → newline
+      val = val.replace(/\\n/g, "\n");
+      out[key] = val;
+    }
+    return out as Partial<CoverInput>;
+  }
+
+  async function onPresetFile(list: FileList | null) {
+    const f = list?.[0];
+    if (!f) return;
+    try {
+      const text = await f.text();
+      const preset = parsePreset(text);
+      const keys = Object.keys(preset) as (keyof CoverInput)[];
+      const allowed: (keyof CoverInput)[] = [
+        "reportTitle", "subtitle", "companyName", "operatingSystem", "pelaksana",
+        "tanggal", "contractNo", "periode", "vendorName", "reviewerClient",
+        "reviewerVendor", "reviewerVendorRole", "reviewerDate", "executiveSummary",
+        "summaryConclusion", "recommendation", "clientAddress", "vendorAddress",
+      ];
+      const filtered = keys.filter((k) => allowed.includes(k));
+      if (filtered.length === 0) {
+        toast.error("Tidak ada field valid ditemukan di preset");
+        return;
+      }
+      setCover((c) => {
+        const next = { ...c };
+        for (const k of filtered) {
+          const v = (preset as Record<string, unknown>)[k as string];
+          if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
+        }
+        return next;
+      });
+      toast.success(`Preset dimuat (${filtered.length} field)`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal baca preset");
+    }
+  }
+
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
