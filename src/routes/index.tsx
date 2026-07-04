@@ -30,7 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { parsePMHtml, summarizePM, type ParsedPM, type StatusKind } from "@/lib/pm-html-parser";
-import { buildAndDownloadDocx, type CoverInput } from "@/lib/docx-exporter";
+import { buildAndDownloadDocx, buildAndDownloadReportSummary, type CoverInput } from "@/lib/docx-exporter";
 import { archiveExport } from "@/lib/exports.functions";
 import { untar, ungzipToTar } from "@/lib/tar";
 import {
@@ -313,6 +313,59 @@ function Home() {
     }
   }
 
+  async function handleExportReportSummary() {
+    if (files.length === 0) {
+      toast.error("Upload minimal 1 file HTML dulu ya");
+      return;
+    }
+    try {
+      setBusy(true);
+      const base = filename.replace(/\.docx$/i, "");
+      await buildAndDownloadReportSummary(cover, files.map((f) => f.pm), `${base}_ReportSummary.docx`);
+      toast.success("Report Summary berhasil dibuat 🔥");
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal membuat Report Summary. Cek console.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function downloadPresetTemplate() {
+    const tpl = `# Preset Metadata ExcportCuy
+# Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat.
+reportTitle=LAPORAN PREVENTIVE MAINTENANCE
+subtitle=Perangkat Lunak
+companyName=PT. Contoh Customer
+operatingSystem=Red Hat Enterprise Linux
+pelaksana=Nama Engineer
+tanggal=2026-07-04
+contractNo=MCARE-XXXX-PO
+periode=Juli 2026
+vendorName=PT. Mitra Integrasi Informatika (MII)
+reviewerClient=Nama Reviewer Klien
+reviewerVendor=Nama Reviewer Vendor
+reviewerVendorRole=Technical Consultant
+reviewerDate=2026-07-04
+clientAddress=Jl. Contoh No 1\\nJakarta 12190
+vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat 11470
+executiveSummary=
+summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync dalam kondisi baik.
+recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMelakukan sinkronisasi ntp/chrony.
+`;
+    const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "preset_template.txt";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); } catch { /* noop */ }
+      URL.revokeObjectURL(url);
+    }, 2000);
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -384,19 +437,28 @@ function Home() {
                   <code className="font-mono">companyName=PT ABC</code>. Gunakan <code>\n</code> untuk baris baru.
                 </div>
               </div>
-              <label
-                htmlFor="preset-upload"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
-              >
-                <Upload className="h-3 w-3" /> Pilih file
-                <input
-                  id="preset-upload"
-                  type="file"
-                  accept=".txt,.json,text/plain,application/json"
-                  className="hidden"
-                  onChange={(e) => onPresetFile(e.target.files)}
-                />
-              </label>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={downloadPresetTemplate}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+                >
+                  <Download className="h-3 w-3" /> Template
+                </button>
+                <label
+                  htmlFor="preset-upload"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs cursor-pointer hover:bg-muted"
+                >
+                  <Upload className="h-3 w-3" /> Pilih file
+                  <input
+                    id="preset-upload"
+                    type="file"
+                    accept=".txt,.json,text/plain,application/json"
+                    className="hidden"
+                    onChange={(e) => onPresetFile(e.target.files)}
+                  />
+                </label>
+              </div>
             </div>
 
 
@@ -499,7 +561,7 @@ function Home() {
 
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-3">
               <Button
                 onClick={handleExport}
                 disabled={busy}
@@ -508,8 +570,20 @@ function Home() {
                 <Download className="h-4 w-4 mr-2" />
                 {busy ? "Membangun dokumen..." : "Export ke Word (.docx)"}
               </Button>
-              <p className="mt-3 text-[11px] text-muted-foreground text-center">
-                Table of Contents otomatis terisi; di Microsoft Word bisa tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk refresh nomor halaman.
+              <Button
+                onClick={handleExportReportSummary}
+                disabled={busy}
+                variant="outline"
+                className="w-full h-10"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {busy ? "Sedang memproses..." : "Export Report Summary (Warning & Critical)"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Report Summary di-generate sebagai file .docx terpisah — berisi rincian temuan Warning/Critical beserta remark dan isian log error tiap server, untuk mempermudah analisa data.
+              </p>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Table of Contents otomatis terisi; di Microsoft Word tekan <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">A</kbd> lalu <kbd className="px-1 rounded bg-muted">F9</kbd> untuk refresh nomor halaman.
               </p>
             </CardContent>
           </Card>

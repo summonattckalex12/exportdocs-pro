@@ -263,8 +263,8 @@ function buildCover(
 
   // Spacer to push title block below the top decorative image area of the background.
   // Cover intentionally has NO logos at the top — logos live in the bottom block.
-  // Extra spacers agar posisi judul turun mengikuti template (blue panel).
-  for (let i = 0; i < 9; i++) {
+  // 10x enter agar posisi judul turun mengikuti template (blue panel).
+  for (let i = 0; i < 10; i++) {
     out.push(new Paragraph({ children: [new TextRun("")] }));
   }
 
@@ -431,7 +431,6 @@ function buildTocEntries(pms: ParsedPM[]) {
     { title: "List Server", level: 2, page: overviewPage },
     { title: "Ringkasan Hasil Preventive Maintenance", level: 2, page: overviewPage },
     { title: "Keterangan Threshold Status", level: 2, page: overviewPage },
-    { title: "Report Summary (Warning & Critical)", level: 2, page: overviewPage },
     { title: "Summary Conclusion", level: 2, page: overviewPage },
     { title: "Recommendation", level: 2, page: overviewPage },
 
@@ -637,9 +636,9 @@ function thresholdTable(): Table {
   });
   const rows: [string, string, string, string][] = [
     ["Mountpoint / Disk", "< 80%", "80% – 89%", ">= 90%"],
-    ["CPU Usage", "< 70%", "70% – 84%", ">= 85%"],
+    ["CPU Usage", "<= 80%", "> 80% – 89%", ">= 90%"],
     ["Memory Usage", "< 80%", "80% – 89%", ">= 90%"],
-    ["Uptime", "Server up sesuai jadwal", "Reboot tidak terjadwal", "Server down"],
+    ["Uptime", "<= 180 hari", "> 180 hari", "Server down / reboot gagal"],
     ["Time & Date Sync", "Tersinkronisasi (ntp/chrony)", "Drift kecil / tidak konsisten", "Tidak sinkron / service mati"],
     ["Log Kill Memory", "Tidak ada OOM kill", "Ada kill non-kritikal", "OOM kill pada service kritikal"],
     ["Log Error", "Tidak ada error signifikan", "Error minor / berulang ringan", "Error kritikal / berulang tinggi"],
@@ -928,8 +927,9 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   );
   children.push(thresholdTable());
 
-  children.push(heading("Report Summary (Warning & Critical)", HeadingLevel.HEADING_2));
-  warningCriticalReport(pms).forEach((p) => children.push(p));
+  // Report Summary (Warning & Critical) sekarang di-generate sebagai file terpisah
+  // via buildAndDownloadReportSummary() untuk memudahkan analisa data.
+
 
 
   children.push(heading("Summary Conclusion", HeadingLevel.HEADING_2));
@@ -1123,7 +1123,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
               new Paragraph({
                 tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
                 children: [
-                  new TextRun({ text: `${cover.companyName || "Customer"} - PM ${cover.operatingSystem || ""}`, size: 18, color: "595959" }),
+                  new TextRun({ text: `${cover.companyName || "Customer"} - PM ${cover.operatingSystem || ""}`, size: 18, color: "1F1F1F", bold: true }),
                   new TextRun({ text: "\t" }),
                   new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true, color: "1F3864" }),
                   new TextRun({ text: " / ", size: 18, color: "595959" }),
@@ -1202,5 +1202,149 @@ export async function buildAndDownloadDocx(cover: CoverInput, pms: ParsedPM[], f
   downloadBlob(blob, filename);
   return blob;
 }
+
+
+
+
+// ============================================================================
+// Report Summary (Warning & Critical) — file DOCX terpisah untuk analisa data
+// ============================================================================
+function logErrorSections(pm: ParsedPM): PMSection[] {
+  return pm.sections.filter((s) => {
+    const t = s.title.toLowerCase();
+    return t.includes("error log") || t.includes("log error") || t.includes("kill");
+  });
+}
+
+async function _buildReportSummaryBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
+  const children: (Paragraph | Table)[] = [];
+
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+      children: [new TextRun({ text: "REPORT SUMMARY — WARNING & CRITICAL", bold: true, size: 32, color: "1F1F1F" })],
+    }),
+  );
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+      children: [
+        new TextRun({
+          text: `${cover.companyName || "-"} · ${cover.operatingSystem || ""} · Periode ${cover.periode || "-"}`,
+          size: 20,
+          color: "595959",
+        }),
+      ],
+    }),
+  );
+
+  children.push(
+    new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 120, after: 120 },
+      children: [new TextRun({ text: "Ringkasan Temuan (Warning & Critical)", bold: true, size: 26 })],
+    }),
+  );
+  warningCriticalReport(pms).forEach((c) => children.push(c));
+
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(
+    new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 120, after: 120 },
+      children: [new TextRun({ text: "Isian Log Error per Server", bold: true, size: 26 })],
+    }),
+  );
+
+  let hasAnyLog = false;
+  for (const pm of pms) {
+    const logs = logErrorSections(pm);
+    if (logs.length === 0) continue;
+    hasAnyLog = true;
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_3,
+        spacing: { before: 200, after: 100 },
+        children: [new TextRun({ text: safeDocxText(pm.hostname || "-"), bold: true, size: 22 })],
+      }),
+    );
+    for (const s of logs) {
+      children.push(new Paragraph({ spacing: { before: 60 }, children: [new TextRun("")] }));
+      children.push(sectionTable(s));
+    }
+  }
+  if (!hasAnyLog) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 100 },
+        children: [new TextRun({ text: "Tidak ada bagian Log Error / Kill Memory yang tercatat.", italics: true, size: 20 })],
+      }),
+    );
+  }
+
+  const doc = new Document({
+    creator: "ExcportCuy",
+    title: `${cover.reportTitle || "Report Summary"} — Warning & Critical`,
+    styles: {
+      default: { document: { run: { font: "Calibri", size: 22 } } },
+      paragraphStyles: [
+        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 32, bold: true, color: "1F1F1F" },
+          paragraph: { spacing: { before: 300, after: 200 }, outlineLevel: 0 } },
+        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 26, bold: true, color: "1F1F1F" },
+          paragraph: { spacing: { before: 240, after: 160 }, outlineLevel: 1 } },
+        { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 22, bold: true, color: "1F1F1F" },
+          paragraph: { spacing: { before: 200, after: 120 }, outlineLevel: 2 } },
+      ],
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
+            margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 },
+          },
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+                children: [
+                  new TextRun({ text: `${cover.companyName || "Customer"} — Report Summary`, size: 18, bold: true, color: "1F1F1F" }),
+                  new TextRun({ text: "\t" }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 18, bold: true }),
+                  new TextRun({ text: " / ", size: 18, color: "595959" }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, color: "595959" }),
+                ],
+              }),
+            ],
+          }),
+        },
+        children: children as any,
+      },
+    ],
+  });
+
+  return Packer.toBlob(doc);
+}
+
+export async function buildReportSummaryBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
+  const raw = await _buildReportSummaryBlob(cover, pms);
+  return new Blob([await raw.arrayBuffer()], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+}
+
+export async function buildAndDownloadReportSummary(cover: CoverInput, pms: ParsedPM[], filename: string): Promise<Blob> {
+  const blob = await buildReportSummaryBlob(cover, pms);
+  downloadBlob(blob, filename);
+  return blob;
+}
+
 
 
