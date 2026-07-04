@@ -219,9 +219,9 @@ function Home() {
     return out as Partial<CoverInput>;
   }
 
-  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026")
-  // atau fallback ke tanggal hari ini.
-  function resolveFileNameTemplate(tpl: string, periode: string): string {
+  // Placeholder: [bulan]/[tahun] diambil dari `cover.periode` (contoh "Juli 2026"),
+  // [Customer] dari `cover.companyName`. Fallback ke tanggal hari ini bila periode kosong.
+  function resolveFileNameTemplate(tpl: string, periode: string, customer: string): string {
     const monthsID = [
       "Januari","Februari","Maret","April","Mei","Juni",
       "Juli","Agustus","September","Oktober","November","Desember",
@@ -237,9 +237,15 @@ function Home() {
       bulan = monthsID[d.getMonth()];
       tahun = String(d.getFullYear());
     }
+    const safeCustomer = (customer || "Customer")
+      .replace(/[\\/:*?"<>|]+/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
     return tpl
       .replace(/\[bulan\]/gi, bulan)
-      .replace(/\[tahun\]/gi, tahun);
+      .replace(/\[tahun\]/gi, tahun)
+      .replace(/\[customer\]/gi, safeCustomer);
   }
 
   async function onPresetFile(list: FileList | null) {
@@ -262,6 +268,7 @@ function Home() {
         return;
       }
       let nextPeriode = cover.periode;
+      let nextCustomer = cover.companyName;
       setCover((c) => {
         const next = { ...c };
         for (const k of filtered) {
@@ -269,11 +276,12 @@ function Home() {
           if (typeof v === "string") (next as Record<string, unknown>)[k as string] = v;
         }
         nextPeriode = next.periode;
+        nextCustomer = next.companyName;
         return next;
       });
       if (hasFileName) {
         const rawName = String((preset as Record<string, unknown>).fileName || "");
-        const resolved = resolveFileNameTemplate(rawName, nextPeriode);
+        const resolved = resolveFileNameTemplate(rawName, nextPeriode, nextCustomer);
         setFilename(resolved.endsWith(".docx") ? resolved : `${resolved}.docx`);
       }
       toast.success(`Preset dimuat (${filtered.length + (hasFileName ? 1 : 0)} field)`);
@@ -365,7 +373,7 @@ function Home() {
   function downloadPresetTemplate() {
     const tpl = `# Preset Metadata ExcportCuy
 # Baris diawali # atau ; = komentar. Gunakan \\n untuk baris baru pada alamat / paragraf.
-# fileName mendukung placeholder [bulan] dan [tahun] (diambil dari periode).
+# fileName mendukung placeholder [Customer], [bulan], [tahun] (Customer dari companyName; bulan/tahun dari periode).
 reportTitle=LAPORAN PREVENTIVE MAINTENANCE
 subtitle=Perangkat Lunak
 companyName=PT. Contoh Customer
@@ -384,7 +392,7 @@ vendorAddress=APL Tower 37th Floor\\nJl. Letjen S. Parman Kav 28\\nJakarta Barat
 executiveSummary=
 summaryConclusion=Rata-rata pemakaian memory dan CPU masih normal.\\nRata-rata time & date sync.\\nRata-rata uptime diatas 180days.\\nDitemukan informasi log error.
 recommendation=Melakukan housekeeping pada server yang mendekati threshold.\\nMenambahkan ram atau melakukan clear buff/cache pada memory server yang warning.\\nMelakukan sinkronisasi ntp/chrony.\\nPengecekan pada server dengan uptime diatas 180days.
-fileName=Laporan_PM_[bulan]_[tahun].docx
+fileName=Laporan_PM_[Customer]_[bulan]_[tahun].docx
 `;
     const blob = new Blob([tpl], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
