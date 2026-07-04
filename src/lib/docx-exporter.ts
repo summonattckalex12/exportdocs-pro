@@ -909,6 +909,26 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
   children.push(heading("Ringkasan Hasil Preventive Maintenance", HeadingLevel.HEADING_2));
   children.push(resultSummaryTable(summaries));
 
+  children.push(heading("Keterangan Threshold Status", HeadingLevel.HEADING_2));
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { after: 120 },
+      children: [
+        new TextRun({
+          text:
+            "Tabel di bawah ini menjelaskan ambang batas (threshold) yang digunakan untuk menentukan status OK, Warning, dan Critical pada masing-masing parameter pemeriksaan Preventive Maintenance.",
+          size: 20,
+        }),
+      ],
+    }),
+  );
+  children.push(thresholdTable());
+
+  children.push(heading("Report Summary (Warning & Critical)", HeadingLevel.HEADING_2));
+  warningCriticalReport(pms).forEach((p) => children.push(p));
+
+
   children.push(heading("Summary Conclusion", HeadingLevel.HEADING_2));
   bullets(cover.summaryConclusion).forEach((p) => children.push(p));
 
