@@ -627,34 +627,68 @@ function resultSummaryTable(sums: SummaryRow[]): Table {
 
 // ---------- threshold explanation table ----------
 function thresholdTable(): Table {
-  const w = [2200, 2400, 2400, CONTENT_WIDTH_DXA - 7000];
-  const head = new TableRow({
+  const wNo = 800;
+  const wItem = 2000;
+  const wRest = CONTENT_WIDTH_DXA - wNo - wItem;
+  const wWarn = Math.floor(wRest / 2);
+  const wCrit = wRest - wWarn;
+  const w = [wNo, wItem, wWarn, wCrit];
+  const headerBg = "CBE6F7";
+
+  const topRow = new TableRow({
     tableHeader: true,
-    children: ["Parameter", "OK", "Warning", "Critical"].map((h, i) =>
-      textCell(h, { width: w[i], fill: COLOR_HEADER, bold: true, align: AlignmentType.CENTER }),
-    ),
+    children: [
+      textCell("No", { width: wNo, fill: headerBg, bold: true, align: AlignmentType.CENTER }),
+      textCell("Item", { width: wItem, fill: headerBg, bold: true, align: AlignmentType.CENTER }),
+      new TableCell({
+        borders: cellBorders,
+        columnSpan: 2,
+        shading: { fill: headerBg, type: ShadingType.CLEAR, color: "auto" },
+        margins: { top: 80, bottom: 80, left: 120, right: 120 },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: "Threshold", bold: true, size: 20 })],
+          }),
+        ],
+      }),
+    ],
   });
-  const rows: [string, string, string, string][] = [
-    ["Mountpoint / Disk", "< 80%", "80% – 89%", ">= 90%"],
-    ["CPU Usage", "<= 80%", "> 80% – 89%", ">= 90%"],
-    ["Memory Usage", "< 80%", "80% – 89%", ">= 90%"],
-    ["Uptime", "<= 180 hari", "> 180 hari", "Server down / reboot gagal"],
-    ["Time & Date Sync", "Tersinkronisasi (ntp/chrony)", "Drift kecil / tidak konsisten", "Tidak sinkron / service mati"],
-    ["Log Kill Memory", "Tidak ada OOM kill", "Ada kill non-kritikal", "OOM kill pada service kritikal"],
-    ["Log Error", "Tidak ada error signifikan", "Error minor / berulang ringan", "Error kritikal / berulang tinggi"],
+
+  const subRow = new TableRow({
+    tableHeader: true,
+    children: [
+      textCell("", { width: wNo, fill: headerBg }),
+      textCell("", { width: wItem, fill: headerBg }),
+      textCell("Warning", { width: wWarn, fill: headerBg, bold: true, align: AlignmentType.CENTER }),
+      textCell("Critical", { width: wCrit, fill: headerBg, bold: true, align: AlignmentType.CENTER }),
+    ],
+  });
+
+  type Row = { item: string; warn: string; warnFill?: string; crit: string; critFill?: string; critColor?: string };
+  const rows: Row[] = [
+    { item: "Disk", warn: "80%", warnFill: COLOR_WARN, crit: "90%", critFill: COLOR_CRIT, critColor: "FFFFFF" },
+    { item: "CPU", warn: "80%", warnFill: COLOR_WARN, crit: "90%", critFill: COLOR_CRIT, critColor: "FFFFFF" },
+    { item: "Memory", warn: "80%", warnFill: COLOR_WARN, crit: "90%", critFill: COLOR_CRIT, critColor: "FFFFFF" },
+    { item: "Uptime", warn: "180 days", warnFill: COLOR_WARN, crit: "", critFill: "000000" },
   ];
   const body = rows.map(
-    ([p, ok, wn, cr]) =>
+    (r, i) =>
       new TableRow({
         children: [
-          textCell(p, { width: w[0], bold: true, fill: "F7F7F7" }),
-          textCell(ok, { width: w[1], fill: COLOR_OK, align: AlignmentType.CENTER, size: 18 }),
-          textCell(wn, { width: w[2], fill: COLOR_WARN, align: AlignmentType.CENTER, size: 18 }),
-          textCell(cr, { width: w[3], fill: COLOR_CRIT, align: AlignmentType.CENTER, size: 18, color: "FFFFFF" }),
+          textCell(String(i + 1), { width: w[0], align: AlignmentType.CENTER }),
+          textCell(r.item, { width: w[1] }),
+          textCell(r.warn, { width: w[2], fill: r.warnFill, align: AlignmentType.CENTER, bold: true }),
+          textCell(r.crit, { width: w[3], fill: r.critFill, align: AlignmentType.CENTER, bold: true, color: r.critColor }),
         ],
       }),
   );
-  return new Table({ width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
+  return new Table({
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: w,
+    rows: [topRow, subRow, ...body],
+  });
 }
 
 // ---------- warning/critical detail report ----------
