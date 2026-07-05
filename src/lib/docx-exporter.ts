@@ -12,7 +12,8 @@ import {
   BorderStyle,
   ShadingType,
   PageBreak,
-  // TableOfContents removed — TOC dirender manual dengan dot-leader.
+  TableOfContents,
+  StyleLevel,
   LevelFormat,
   PageOrientation,
   VerticalAlign,
@@ -25,10 +26,9 @@ import {
   HorizontalPositionRelativeFrom,
   VerticalPositionRelativeFrom,
   TextWrappingType,
+  TableLayoutType,
   TabStopType,
   TabStopPosition,
-  LeaderType,
-  TableLayoutType,
 } from "docx";
 
 
@@ -418,32 +418,12 @@ function buildCover(
 
 
 // ---------- Table of Contents ----------
-function buildTocEntries(pms: ParsedPM[]) {
-  const overviewPage = 4;
-  const lampiranPage = 5;
-  return [
-    { title: "Document Control", level: 1, page: 3 },
-    { title: "Revision", level: 2, page: 3 },
-    { title: "List Of Activity", level: 2, page: 3 },
-    { title: "Document Reviewer", level: 2, page: 3 },
-    { title: "Overview", level: 1, page: overviewPage },
-    { title: "Executive Summary", level: 2, page: overviewPage },
-    { title: "List Server", level: 2, page: overviewPage },
-    { title: "Ringkasan Hasil Preventive Maintenance", level: 2, page: overviewPage },
-    { title: "Keterangan Threshold Status", level: 2, page: overviewPage },
-    { title: "Summary Conclusion", level: 2, page: overviewPage },
-    { title: "Recommendation", level: 2, page: overviewPage },
 
-    { title: "Lampiran Pekerjaan Preventive Maintenance", level: 1, page: lampiranPage },
-    ...pms.map((pm, i) => ({ title: `${i + 1}. ${safeDocxText(pm.hostname || `Server ${i + 1}`)}`, level: 2, page: lampiranPage + i })),
-  ];
-}
 
-function buildToc(pms: ParsedPM[]): Paragraph[] {
-  const entries = buildTocEntries(pms);
-  const out: Paragraph[] = [];
+function buildToc(_pms: ParsedPM[]): (Paragraph | TableOfContents)[] {
+  const out: (Paragraph | TableOfContents)[] = [];
 
-  // Heading judul TOC — konsisten mengikuti gaya PDF referensi.
+  // Judul TOC — konsisten mengikuti gaya PDF referensi.
   out.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -454,29 +434,24 @@ function buildToc(pms: ParsedPM[]): Paragraph[] {
     }),
   );
 
-  // Entri TOC dengan dot-leader tab stop ke posisi kanan.
-  for (const e of entries) {
-    const isL1 = e.level === 1;
-    const indent = isL1 ? 0 : 360; // level-2 diberi indentasi 0.25"
-    out.push(
-      new Paragraph({
-        spacing: { before: isL1 ? 120 : 40, after: isL1 ? 40 : 20, line: 280 },
-        indent: { left: indent },
-        tabStops: [
-          { type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA - 40, leader: LeaderType.DOT },
-        ],
-        children: [
-          new TextRun({ text: e.title, size: isL1 ? 22 : 20, bold: isL1 }),
-          new TextRun({ text: "\t", size: isL1 ? 22 : 20 }),
-          new TextRun({ text: String(e.page), size: isL1 ? 22 : 20, bold: isL1 }),
-        ],
-      }),
-    );
-  }
+  // TOC field otomatis — di Word tekan Ctrl+A lalu F9 untuk refresh nomor halaman.
+  // hyperlink=true membuat entri jadi link internal ke heading.
+  out.push(
+    new TableOfContents("Daftar Isi", {
+      hyperlink: true,
+      headingStyleRange: "1-3",
+      stylesWithLevels: [
+        new StyleLevel("Heading1", 1),
+        new StyleLevel("Heading2", 2),
+        new StyleLevel("Heading3", 3),
+      ],
+    }),
+  );
 
   out.push(new Paragraph({ children: [new PageBreak()] }));
   return out;
 }
+
 
 // ---------- document control ----------
 function docControlTable(cover: CoverInput): Table {
@@ -911,7 +886,7 @@ async function _buildBlob(cover: CoverInput, pms: ParsedPM[]): Promise<Blob> {
       .filter(Boolean)
       .map((l) => bullet(l.replace(/^[-•*]\s*/, "")));
 
-  const children: (Paragraph | Table)[] = [];
+  const children: (Paragraph | Table | TableOfContents)[] = [];
 
   // Load default cover background (bundled) unless user provided one.
   const bg = cover.coverBackgroundDataUrl
