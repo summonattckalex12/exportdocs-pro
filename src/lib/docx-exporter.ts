@@ -12,7 +12,8 @@ import {
   BorderStyle,
   ShadingType,
   PageBreak,
-  // TableOfContents removed — TOC dirender manual dengan dot-leader.
+  TableOfContents,
+  StyleLevel,
   LevelFormat,
   PageOrientation,
   VerticalAlign,
