@@ -440,11 +440,10 @@ function buildTocEntries(pms: ParsedPM[]) {
   ];
 }
 
-function buildToc(pms: ParsedPM[]): Paragraph[] {
-  const entries = buildTocEntries(pms);
-  const out: Paragraph[] = [];
+function buildToc(_pms: ParsedPM[]): (Paragraph | TableOfContents)[] {
+  const out: (Paragraph | TableOfContents)[] = [];
 
-  // Heading judul TOC — konsisten mengikuti gaya PDF referensi.
+  // Judul TOC — konsisten mengikuti gaya PDF referensi.
   out.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -455,29 +454,24 @@ function buildToc(pms: ParsedPM[]): Paragraph[] {
     }),
   );
 
-  // Entri TOC dengan dot-leader tab stop ke posisi kanan.
-  for (const e of entries) {
-    const isL1 = e.level === 1;
-    const indent = isL1 ? 0 : 360; // level-2 diberi indentasi 0.25"
-    out.push(
-      new Paragraph({
-        spacing: { before: isL1 ? 120 : 40, after: isL1 ? 40 : 20, line: 280 },
-        indent: { left: indent },
-        tabStops: [
-          { type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA - 40, leader: LeaderType.DOT },
-        ],
-        children: [
-          new TextRun({ text: e.title, size: isL1 ? 22 : 20, bold: isL1 }),
-          new TextRun({ text: "\t", size: isL1 ? 22 : 20 }),
-          new TextRun({ text: String(e.page), size: isL1 ? 22 : 20, bold: isL1 }),
-        ],
-      }),
-    );
-  }
+  // TOC field otomatis — di Word tekan Ctrl+A lalu F9 untuk refresh nomor halaman.
+  // hyperlink=true membuat entri jadi link internal ke heading.
+  out.push(
+    new TableOfContents("Daftar Isi", {
+      hyperlink: true,
+      headingStyleRange: "1-3",
+      stylesWithLevels: [
+        new StyleLevel("Heading1", 1),
+        new StyleLevel("Heading2", 2),
+        new StyleLevel("Heading3", 3),
+      ],
+    }),
+  );
 
   out.push(new Paragraph({ children: [new PageBreak()] }));
   return out;
 }
+
 
 // ---------- document control ----------
 function docControlTable(cover: CoverInput): Table {
