@@ -83,9 +83,9 @@ const DEFAULT_COVER: CoverInput = {
   clientAddress: "Jl. Gatot Subroto Kav 40-42\nJakarta 12190",
   vendorAddress: "APL Tower 37th Floor\nJl. Letjen S. Parman Kav 28\nJakarta Barat 11470",
   summaryConclusion:
-    "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync dalam kondisi baik.\nDitemukan beberapa server dengan status Warning pada log error.",
+    "Rata-rata pemakaian memory dan CPU masih normal.\nRata-rata time & date sync.\nRata-rata uptime diatas 180days.\nDitemukan informasi log error.\nDitemukan penggunaan disk diatas threshold.\nDitemukan informasi log kill memory.",
   recommendation:
-    "Melakukan housekeeping atau penambahan disk pada server yang mendekati threshold.\nMelakukan sinkronisasi ntp/chrony agar time & date pada server sesuai.\nMelakukan patching security atau update untuk menghilangkan temuan scan VA.",
+    "Melakukan housekeeping pada server yang sudah diatas threshold.\nMenambahkan ram atau melakukan clear buff/cache pada memory server yang warning.\nMelakukan sinkronisasi ntp/chrony.\nPengecekan pada server dengan uptime diatas 180days.",
 };
 
 interface FileItem {
