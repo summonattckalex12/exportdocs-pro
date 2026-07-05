@@ -26,9 +26,6 @@ import {
   HorizontalPositionRelativeFrom,
   VerticalPositionRelativeFrom,
   TextWrappingType,
-  TabStopType,
-  TabStopPosition,
-  LeaderType,
   TableLayoutType,
 } from "docx";
 
